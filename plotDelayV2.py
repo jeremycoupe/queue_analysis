@@ -173,7 +173,7 @@ for date in range(len(dateVec)):
 								lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
 								lastPriority = dfLastSchedule.loc[dfLastSchedule.index[0],'schedule_priority']
 								lastGate = dfLastSchedule.loc[dfLastSchedule.index[0],'gate']
-								lastTOBT = df[(df['fix'] == df['runway'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
+								lastTOBT = df[(df['fix'] == df['gate'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
 								&(df['flight_key'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] ) ]
 
 								if 'GA' not in lastGate:
