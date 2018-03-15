@@ -4,6 +4,9 @@ import psycopg2
 import pandas.io.sql as psql
 import matplotlib.pyplot as plt
 
+randomColors = np.load('/home/milin/analysis/queue_analysis/randomColors.npy')
+
+# TODO: make this work for new scheduler tables
 
 bank2 = True
 bank3 = False
@@ -29,8 +32,8 @@ dateVec = []
 # 		dateVec.append(daySt + str(i))
 
 
-daySt = '2018-03-'
-for i in range(1,13):
+daySt = '2017-12-'
+for i in range(3,32):
 	if i < 10:
 		dateVec.append(daySt + '0' + str(i))
 	else:
@@ -52,8 +55,8 @@ for date in range(len(dateVec)):
 	stMF = dateVec[date].replace('-','')
 	metered = True
 	try:
-		dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
-		#dfMF = pd.read_csv('/home/milin/Downloads/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
+		#dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
+		dfMF = pd.read_csv('/home/milin/analysis/queue_analysis/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
 		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
 	except:
 		try:
@@ -70,7 +73,7 @@ for date in range(len(dateVec)):
 
 
 	for rwy in range(len(runwayVec)):
-
+# TODO: instead of filter by TIME_BASED_METERING, use bank start and end
 		dfFiltered = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
 		& (df['fix'] == df['runway']) & (df['general_stream'] == 'DEPARTURE') ]
 		
@@ -151,7 +154,6 @@ for date in range(len(dateVec)):
 					meterVec[ts] = 1
 
 		
-
 				if metered:
 					for flight in range(len(dfMeteredActive['flight_key'])):
 						if dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] not in activeVec:
@@ -177,6 +179,7 @@ for date in range(len(dateVec)):
 									lastTOBT = df[(df['fix'] == df['gate'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
 									&(df['flight_key'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] ) ]
 
+# TODO make identification of GAs more robust
 									if 'GA' not in lastGate:
 										if lastState in ['PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
@@ -224,25 +227,32 @@ for date in range(len(dateVec)):
 											df_compliance.loc[idx,'previous_state'] = 'GA ' + lastPriority
 								
 								except:
-									print('LOOK INTO THIS POSSIBLE RUNWAY SWITCH')
-									print(etaMsgVec[ts])
-									print(runwayVec[rwy])
-									print(dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'])
+									if ts > 0:
+										print('LOOK INTO THIS POSSIBLE RUNWAY SWITCH')
+										print(etaMsgVec[ts])
+										print(runwayVec[rwy])
+										print(dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'])
+
+										df_compliance.loc[idx,'runway'] = runwayVec[rwy]
+										df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
+										df_compliance.loc[idx,'ts'] = ts
+										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+										df_compliance.loc[idx,'compliance'] = 0
+										df_compliance.loc[idx,'previous_state'] = 'RUNWAY_SWITCH'
+										tempDF = df[(df['fix'] == df['runway'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
+										&(df['flight_key'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] ) ]
+										previousRunway = tempDF.loc[tempDF.index[0],'runway']
+
+										print('previousRunway is {}, runwayVec[rwy] is {}'.format(previousRunway, runwayVec[rwy]))
+										if previousRunway != runwayVec[rwy]:
+											print('CONFIRMED RUNWAY SWITCH')
+										else: 
+											print('Not a runway switch!') #TODO: write out to file
 									print('\n')
 
-									df_compliance.loc[idx,'runway'] = runwayVec[rwy]
-									df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
-									df_compliance.loc[idx,'ts'] = ts
-									df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
-									df_compliance.loc[idx,'compliance'] = 0
-									df_compliance.loc[idx,'previous_state'] = 'RUNWAY_SWITCH'
-
-							
-								
 
 
 
-					
 				
 				minPlannedDelay[ts] = pd.Timedelta(dfMeteredGate['ttot_minus_utot'].min() ) /np.timedelta64(1, 's')
 				test = pd.to_timedelta(dfMeteredGate['ttot_minus_utot']) / np.timedelta64(1, 's')
@@ -313,7 +323,6 @@ for date in range(len(dateVec)):
 			plt.plot(np.arange(len(maxActive)) , np.full(len(maxActive),-2,dtype=float) , '--', color = 'black')
 		
 
-			uniqueState = df_compliance['previous_state'].unique()
 
 			idS+=1
 			df_summary.loc[idS,'date'] = dateVec[date]
@@ -333,6 +342,10 @@ for date in range(len(dateVec)):
 			df_summary.loc[idS,'count_ga_apreq'] = len(df_compliance[df_compliance['previous_state'] == 'GA APREQ_DEPARTURE'])
 			df_summary.loc[idS,'count_ga_edct'] = len(df_compliance[df_compliance['previous_state'] == 'GA EDCT_DEPARTURE'])
 
+			uniqueState = ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE','RUNWAY_SWITCH',\
+			'PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN','GA PUSHBACK_UNCERTAIN','GA PUSHBACK_PLANNED',\
+			'GA PUSHBACK_READY', 'GA APREQ_DEPARTURE' , 'GA EDCT_DEPARTURE' , 'GA EXEMPT_DEPARTURE']
+
 			all_compliance = []
 			count_bad_compliance_5 = 0
 			for state in range(len(uniqueState)):
@@ -341,6 +354,7 @@ for date in range(len(dateVec)):
 				labelSt = uniqueState[state]
 				for row in range(len(df_compliance['gufi'])):
 					if df_compliance.loc[df_compliance.index[row],'previous_state'] == labelSt:
+						colStr = randomColors[state]
 						if str(df_compliance.loc[df_compliance.index[row],'compliance']) != 'nan':
 							if df_compliance.loc[df_compliance.index[row],'compliance'] != None:
 								xPlot.append(df_compliance.loc[df_compliance.index[row],'ts'])
@@ -349,9 +363,9 @@ for date in range(len(dateVec)):
 								if all_compliance[-1] < -5:
 									count_bad_compliance_5 +=1
 
-
+# TODO: set color and state, so the plot color is not randomly ordered every time
 				if len(xPlot)>0:
-					plt.plot(xPlot,yPlot,'*',markersize=7,label=labelSt)
+					plt.plot(xPlot,yPlot,'*',markersize=7,color = colStr,label=labelSt)
 
 			# print(all_compliance)
 			# print(len(all_compliance))

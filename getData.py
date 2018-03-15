@@ -13,8 +13,8 @@ bank3 = True
 
 dayVarVec = []
 
-daySt = '2018-03-'
-for i in range(1,8):
+daySt = '2017-12-'
+for i in range(2,32):
 	if i < 10:
 		dayVarVec.append(daySt + '0' + str(i))
 	else:
