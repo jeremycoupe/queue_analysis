@@ -8,8 +8,8 @@ randomColors = np.load('/home/milin/analysis/queue_analysis/randomColors.npy')
 
 # TODO: make this work for new scheduler tables
 
-bank2 = True
-bank3 = False
+bank2 = False
+bank3 = True
 
 
 alphaVal = 0.6
@@ -32,8 +32,8 @@ dateVec = []
 # 		dateVec.append(daySt + str(i))
 
 
-daySt = '2017-12-'
-for i in range(3,32):
+daySt = '2018-02-'
+for i in range(1,11):
 	if i < 10:
 		dateVec.append(daySt + '0' + str(i))
 	else:
@@ -71,7 +71,7 @@ for date in range(len(dateVec)):
 	df_summary = pd.DataFrame(np.empty((1,len(cols0)), dtype=object),columns=cols0)
 	idS = -1
 
-
+	debug_except_notRwySw = []
 	for rwy in range(len(runwayVec)):
 # TODO: instead of filter by TIME_BASED_METERING, use bank start and end
 		dfFiltered = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
@@ -153,7 +153,7 @@ for date in range(len(dateVec)):
 				if runwayVec[rwy] in stRunway:
 					meterVec[ts] = 1
 
-		
+
 				if metered:
 					for flight in range(len(dfMeteredActive['flight_key'])):
 						if dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] not in activeVec:
@@ -248,6 +248,7 @@ for date in range(len(dateVec)):
 											print('CONFIRMED RUNWAY SWITCH')
 										else: 
 											print('Not a runway switch!') #TODO: write out to file
+											debug_except_notRwySw.append(dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'])
 									print('\n')
 
 
@@ -390,5 +391,9 @@ for date in range(len(dateVec)):
 			plt.close('all')
 	#plt.show()
 
+	debugOut1 = open('debug_except_notRwySw.txt', 'w')
+	for item in debug_except_notRwySw:
+		debugOut1.write('{}\n'.format(item))
+	debugOut1.close()
 	df_summary.to_csv('data/bank2/summary/summary_' + dateVec[date] + '.csv')
 print('Total Number of Fluttering = ' + str(totalNumberFlutter))
