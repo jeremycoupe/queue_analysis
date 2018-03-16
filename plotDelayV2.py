@@ -377,7 +377,10 @@ for date in range(len(dateVec)):
 	#plt.show()
 
 	print('writing except not-rwy-switches to file')
-	debug_except_notRwySw.to_csv('debug_except_notRwySw.txt')
+	logbankNum = 2
+	if bank3:
+		logbankNum = 3
+	debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}-{}.txt'.format(daySt, logbankNum, runwayVec[rwy]))
 
 	df_summary.to_csv('data/bank2/summary/summary_' + dateVec[date] + '.csv')
 print('Total Number of Fluttering = ' + str(totalNumberFlutter))
