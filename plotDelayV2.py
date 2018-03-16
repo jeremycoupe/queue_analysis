@@ -8,8 +8,8 @@ randomColors = np.load('/home/milin/analysis/queue_analysis/randomColors.npy')
 
 # TODO: make this work for new scheduler tables
 
-bank2 = False
-bank3 = True
+bank2 = True
+bank3 = False
 
 
 alphaVal = 0.6
@@ -32,8 +32,8 @@ dateVec = []
 # 		dateVec.append(daySt + str(i))
 
 
-daySt = '2018-02-'
-for i in range(1,11):
+daySt = '2017-12-'
+for i in range(3,32):
 	if i < 10:
 		dateVec.append(daySt + '0' + str(i))
 	else:
@@ -71,7 +71,7 @@ for date in range(len(dateVec)):
 	df_summary = pd.DataFrame(np.empty((1,len(cols0)), dtype=object),columns=cols0)
 	idS = -1
 
-	debug_except_notRwySw = []
+	debug_except_notRwySw = pd.DataFrame()
 	for rwy in range(len(runwayVec)):
 # TODO: instead of filter by TIME_BASED_METERING, use bank start and end
 		dfFiltered = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
@@ -88,7 +88,6 @@ for date in range(len(dateVec)):
 			df_compliance = pd.DataFrame(np.empty((1,len(cols)), dtype=object),columns=cols)
 			idx = -1
 			
-
 			etaMsgVec0 = dfFiltered['eta_msg_time'].drop_duplicates()
 			etaMsgVec = etaMsgVec0.reset_index(drop=True)
 
@@ -153,7 +152,6 @@ for date in range(len(dateVec)):
 				if runwayVec[rwy] in stRunway:
 					meterVec[ts] = 1
 
-
 				if metered:
 					for flight in range(len(dfMeteredActive['flight_key'])):
 						if dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] not in activeVec:
@@ -165,10 +163,8 @@ for date in range(len(dateVec)):
 									compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) \
 									- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready']) ).total_seconds() / float(60)
 									
-
 								else:
 									compliance = 'nan'
-
 
 								try:	
 									dfLastSchedule = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts-1] ) \
@@ -247,13 +243,13 @@ for date in range(len(dateVec)):
 										if previousRunway != runwayVec[rwy]:
 											print('CONFIRMED RUNWAY SWITCH')
 										else: 
-											print('Not a runway switch!') #TODO: write out to file
-											debug_except_notRwySw.append(dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'])
+											print('Not a runway switch! Adding to file:') #TODO: write out to file
+											debug_except_notRwySw = debug_except_notRwySw.append(pd.DataFrame(
+												{'gufi':dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'], 
+												'rwy':runwayVec[rwy], 
+												'etaMsgTime':etaMsgVec[ts]}, index=[0]))
+											print(debug_except_notRwySw)
 									print('\n')
-
-
-
-
 				
 				minPlannedDelay[ts] = pd.Timedelta(dfMeteredGate['ttot_minus_utot'].min() ) /np.timedelta64(1, 's')
 				test = pd.to_timedelta(dfMeteredGate['ttot_minus_utot']) / np.timedelta64(1, 's')
@@ -262,7 +258,6 @@ for date in range(len(dateVec)):
 					for j in range(len(test)):
 						if test[test.index[j]] > 720:
 							numAboveTarget[ts] +=1
-
 
 			timeOn = ''
 			timeOff = ''
@@ -282,8 +277,6 @@ for date in range(len(dateVec)):
 				print(dateVec[date]  + ' ' + runwayVec[rwy] +  ' METERING FLUTTERED ON/OFF')
 				totalNumberFlutter +=1
 
-
-
 			#print(meterVec)
 			
 			plt.subplot(3,1,1)
@@ -294,14 +287,11 @@ for date in range(len(dateVec)):
 			#plt.plot(np.arange(len(maxActive)) , np.cumsum(balloonMetricVec) / float(35) , color = 'red', linewidth = 2, alpha = alphaVal, label = 'Balloon Metric ' + runwayVec[rwy])
 			#plt.plot(np.arange(len(maxActive)) , maxUncertain / float(60) , label = 'Max Uncertain Delay Runway ' + runwayVec[rwy])
 			# plt.plot(np.arange(len(maxActive)) , meanPlannedDelay / float(60) , color = 'm',  alpha = 0.5, label = 'Mean Planned Delay Runway ' + runway)
-			# plt.plot(np.arange(len(maxActive)) , minPlannedDelay / float(60) , color = 'r' , alpha = 0.5, label = 'Min Planned Delay Runway ' + runway)
-			
+			# plt.plot(np.arange(len(maxActive)) , minPlannedDelay / float(60) , color = 'r' , alpha = 0.5, label = 'Min Planned Delay Runway ' + runway)	
 		
 			plt.plot(np.arange(len(maxActive)) , upperBoundVec , '--', color = 'grey' , alpha = 0.4*(j+1), linewidth = 3, label = str(upperBoundVec[-1]) + ' Minute Upper Threshold')
 			plt.plot(np.arange(len(maxActive)) , targetVec , color = 'black' ,alpha = 0.4*(j+1), linewidth = 3, label = str(targetVec[-1]) + ' Minute Target Queue')
 			plt.plot(np.arange(len(maxActive)) , lowerBoundVec , color = 'grey' ,alpha = 0.4*(j+1), linewidth = 3, label = str(lowerBoundVec[-1]) + ' Minute Lower Threshold')
-			
-
 
 			plt.ylabel('max(TTOT - UTOT) [Minutes]')
 			plt.xticks(np.arange(0,len(etaMsgVec),90),displayEta,rotation=45,fontsize = 8)
@@ -315,15 +305,12 @@ for date in range(len(dateVec)):
 			plt.plot(np.arange(len(maxActive)) , numPlanned , color = 'orange', linewidth = 2, alpha = alphaVal, label = 'Number in Planned Group ' + runwayVec[rwy])
 			plt.plot(np.arange(len(maxActive)) , numReady , color = 'green', linewidth = 2,alpha = alphaVal, label = 'Number in Ready Group ' + runwayVec[rwy])
 
-			plt.legend()
-			
+			plt.legend()			
 
 			plt.subplot(3,1,3)
 			ax = plt.gca()
 			plt.plot(np.arange(len(maxActive)) , np.zeros(len(maxActive)) , '-', color = 'black')
 			plt.plot(np.arange(len(maxActive)) , np.full(len(maxActive),-2,dtype=float) , '--', color = 'black')
-		
-
 
 			idS+=1
 			df_summary.loc[idS,'date'] = dateVec[date]
@@ -378,10 +365,8 @@ for date in range(len(dateVec)):
 
 			df_compliance.to_csv('data/bank2/compliance/compliance_' +runwayVec[rwy] + '_' + dateVec[date] + '.csv')
 			
-
 			plt.legend()
 
-			
 			plt.tight_layout()
 			if bank2:
 				plt.savefig('figs/bank2/' + runwayVec[rwy] + '_' + dateVec[date] + '_bank2_delay_figV3.png')
@@ -391,9 +376,8 @@ for date in range(len(dateVec)):
 			plt.close('all')
 	#plt.show()
 
-	debugOut1 = open('debug_except_notRwySw.txt', 'w')
-	for item in debug_except_notRwySw:
-		debugOut1.write('{}\n'.format(item))
-	debugOut1.close()
+	print('writing except not-rwy-switches to file')
+	debug_except_notRwySw.to_csv('debug_except_notRwySw.txt')
+
 	df_summary.to_csv('data/bank2/summary/summary_' + dateVec[date] + '.csv')
 print('Total Number of Fluttering = ' + str(totalNumberFlutter))
