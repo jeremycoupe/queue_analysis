@@ -40,6 +40,7 @@ for i in range(3,32):
 		dateVec.append(daySt + str(i))
 
 totalNumberFlutter = 0
+debug_except_notRwySw = pd.DataFrame()
 for date in range(len(dateVec)):
 	print(dateVec[date])
 	if bank2:
@@ -71,7 +72,6 @@ for date in range(len(dateVec)):
 	df_summary = pd.DataFrame(np.empty((1,len(cols0)), dtype=object),columns=cols0)
 	idS = -1
 
-	debug_except_notRwySw = pd.DataFrame()
 	for rwy in range(len(runwayVec)):
 # TODO: instead of filter by TIME_BASED_METERING, use bank start and end
 		dfFiltered = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
@@ -376,11 +376,11 @@ for date in range(len(dateVec)):
 			plt.close('all')
 	#plt.show()
 
-	print('writing except not-rwy-switches to file')
-	logbankNum = 2
-	if bank3:
-		logbankNum = 3
-	debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}-{}.txt'.format(daySt, logbankNum, runwayVec[rwy]))
 
 	df_summary.to_csv('data/bank2/summary/summary_' + dateVec[date] + '.csv')
 print('Total Number of Fluttering = ' + str(totalNumberFlutter))
+print('writing except not-rwy-switches to file')
+logbankNum = 2
+if bank3:
+	logbankNum = 3
+debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}.txt'.format(daySt, logbankNum))
