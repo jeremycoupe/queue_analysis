@@ -383,4 +383,4 @@ print('writing except not-rwy-switches to file')
 logbankNum = 2
 if bank3:
 	logbankNum = 3
-debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}.txt'.format(daySt, logbankNum))
+debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}.csv'.format(daySt, logbankNum))
