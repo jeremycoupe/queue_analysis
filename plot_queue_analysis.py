@@ -3,50 +3,32 @@ import pandas as pd
 import psycopg2
 import pandas.io.sql as psql
 import matplotlib.pyplot as plt
+import argparse
+import datetime as dt
 
 randomColors = np.load('randomColors.npy')
-
-# TODO: make this work for new scheduler tables
-
-bank2 = True
-bank3 = False
-
-
 alphaVal = 0.6
 
-dateVec = []
 
-
-
-daySt = '2018-03-'
-for i in range(1,14):
-	if i < 10:
-		dateVec.append(daySt + '0' + str(i))
-	else:
-		dateVec.append(daySt + str(i))
-
-totalNumberFlutter = 0
-for date in range(len(dateVec)):
-	print(dateVec[date])
-	if bank2:
-		file = 'data/bank2/scheduler_analysis/bank2_scheduler_analysis_data_' + dateVec[date] + '.csv'
-	if bank3:
-		file = 'data/bank3/scheduler_analysis/bank3_scheduler_analysis_data_' + dateVec[date] + '.csv'
-	
-	df = pd.read_csv(file)
+def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is int
+	totalNumberFlutter = 0
+	targetdate_dir = targetdate.strftime('%Y/%m/%d')
+	targetdate_str = targetdate.strftime('%Y-%m-%d')
+	print('Processing {}'.format(targetdate_str))
+	df = pd.read_csv('data/{0}/bank{1}/scheduler_analysis_data_{2}_bank{1}.csv'.format(targetdate_dir, banknum, targetdate_str))
 
 	df = df[ (df['general_stream'] == 'DEPARTURE') ]
 	runwayVec = df['runway'].unique()
 
-	stMF = dateVec[date].replace('-','')
+	stMF = targetdate.strftime('%Y%m%d')
 	metered = True
 	try:
-		dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
-		#dfMF = pd.read_csv('/home/milin/analysis/queue_analysis/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
+		#dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
+		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF)  , sep=',' , index_col=False)
 		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
 	except:
 		try:
-			dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_'+ dateVec[date] + '.csv'  , sep=',' , index_col=False)
+			dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_'+ targetdate_str + '.csv'  , sep=',' , index_col=False)
 		except:
 			metered = False
 
@@ -59,12 +41,12 @@ for date in range(len(dateVec)):
 
 	debug_except_notRwySw = pd.DataFrame()
 	for rwy in range(len(runwayVec)):
-# TODO: instead of filter by TIME_BASED_METERING, use bank start and end
+	# TODO: instead of filter by TIME_BASED_METERING, use bank start and end
 		dfCurrentRunway = df[ (df['runway'] == runwayVec[rwy]) & (df['general_stream'] == 'DEPARTURE') ]
 		
 		if len(dfCurrentRunway)>0:
 			dfCurrentRunway = dfCurrentRunway.sort_values(by=['msg_time','runway_sta'])
-			dfCurrentRunway.to_csv('data/bank2/debug/scheduler_analysis_debug'+runwayVec[rwy]+dateVec[date]+'.csv')
+			dfCurrentRunway.to_csv('data/{0}/bank{1}/scheduler_analysis_debug_{2}_bank{1}_{3}.csv'.format(targetdate_dir, banknum, targetdate_str, runwayVec[rwy]))
 
 			activeVec = []
 
@@ -82,7 +64,6 @@ for date in range(len(dateVec)):
 				if i % 90 == 0:
 					displayEta.append(str(etaMsgVec[i]).split('.')[0])
 					#print('HERE')
-
 			#print(etaMsgVec)
 
 			maxActive = np.zeros(len(etaMsgVec))
@@ -109,7 +90,6 @@ for date in range(len(dateVec)):
 			plt.figure(figsize = (14,10))
 
 			for ts in range(len(etaMsgVec)):
-
 				dfActive = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'].isin(['NO_PRIORITY_DEPARTURE_TAXI' , 'NO_PRIORITY_DEPARTURE_TAXI_AMA' ]))]
 				dfAMA = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'] == 'NO_PRIORITY_DEPARTURE_TAXI_AMA')]
 				dfGate = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_PLANNED')]
@@ -147,8 +127,7 @@ for date in range(len(dateVec)):
 				if meterModeVec[ts] == 1:
 					if runwayVec[rwy] in stRunway:
 						meterVec[ts] = 1
-
-				
+		
 				for flight in range(len(dfActiveALL['flight_key'])):
 					if dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] not in activeVec:
 						activeVec.append(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
@@ -158,14 +137,13 @@ for date in range(len(dateVec)):
 	
 								dfLastSchedule = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts-1] ) \
 								& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] )]
-								
-								
+															
 								if len(dfLastSchedule) > 0:
 									lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
 									lastPriority = dfLastSchedule.loc[dfLastSchedule.index[0],'schedule_priority']
 									lastGate = dfLastSchedule.loc[dfLastSchedule.index[0],'gate']
 
-	# TODO make identification of GAs more robust
+									# TODO make identification of GAs more robust
 									if 'GA' not in lastGate:
 										if lastState in ['PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
@@ -176,13 +154,12 @@ for date in range(len(dateVec)):
 											dfCompliance = dfMF[ dfMF['gufi'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ]
 											if len(dfCompliance['gufi']) > 0:
 												compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) \
-												- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready']) ).total_seconds() / float(60)											
+												- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready']) ).total_seconds() / float(60)
 											else:
 												compliance = 'nan'
 											df_compliance.loc[idx,'compliance'] = compliance
 											########
 											df_compliance.loc[idx,'previous_state'] = lastState
-
 
 										if lastPriority in ['APREQ_DEPARTURE','EDCT_DEPARTURE']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
@@ -260,7 +237,7 @@ for date in range(len(dateVec)):
 										# if previousRunway != runwayVec[rwy]:
 										# 	print('CONFIRMED RUNWAY SWITCH')
 										# else: 
-										# 	print('Not a runway switch! Adding to file:') #TODO: write out to file
+										# 	print('Not a runway switch! Adding to file') 
 										# 	debug_except_notRwySw = debug_except_notRwySw.append(pd.DataFrame(
 										# 		{'gufi':dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'], 
 										# 		'rwy':runwayVec[rwy], 
@@ -284,7 +261,7 @@ for date in range(len(dateVec)):
 					timeOff = timeOff + '--' + etaMsgVec[k]
 
 			if numSwitch > 2:
-				print(dateVec[date]  + ' ' + runwayVec[rwy] +  ' METERING FLUTTERED ON/OFF')
+				print(targetdate_str  + ' ' + runwayVec[rwy] +  ' METERING FLUTTERED ON/OFF')
 				totalNumberFlutter +=1
 
 			#print(meterVec)
@@ -306,7 +283,7 @@ for date in range(len(dateVec)):
 
 			plt.ylabel('max(TTOT - UTOT) [Minutes]')
 			plt.xticks(np.arange(0,len(etaMsgVec),90),displayEta,rotation=45,fontsize = 8)
-			plt.title('Runway ' + runwayVec[rwy] + ' Delay ' + dateVec[date])
+			plt.title('Runway ' + runwayVec[rwy] + ' Delay ' + targetdate_str)
 			plt.legend(loc='upper left',fontsize=8)
 
 			plt.subplot(3,1,2)
@@ -324,7 +301,7 @@ for date in range(len(dateVec)):
 			plt.plot(np.arange(len(maxActive)) , np.full(len(maxActive),-2,dtype=float) , '--', color = 'black',label='-2 Compliance')
 
 			idS+=1
-			df_summary.loc[idS,'date'] = dateVec[date]
+			df_summary.loc[idS,'date'] = targetdate_str
 			df_summary.loc[idS,'runway'] = runwayVec[rwy]
 			df_summary.loc[idS,'meter_switch_on_off'] = numSwitch
 			df_summary.loc[idS,'meter_on'] = timeOn
@@ -364,7 +341,7 @@ for date in range(len(dateVec)):
 								if all_compliance[-1] < -5:
 									count_bad_compliance_5 +=1
 
-# TODO: set color and state, so the plot color is not randomly ordered every time
+				# TODO: set color and state, so the plot color is not randomly ordered every time
 				if len(xPlot)>0:
 					plt.plot(xPlot,yPlot,'*',markersize=7,color = colStr,label=labelSt)
 
@@ -376,25 +353,42 @@ for date in range(len(dateVec)):
 				df_summary.loc[idS,'average_compliance'] = 0
 			df_summary.loc[idS,'count_non_compliant_5'] = count_bad_compliance_5
 
-			df_compliance.to_csv('data/bank2/compliance/compliance_' +runwayVec[rwy] + '_' + dateVec[date] + '.csv')
+			df_compliance.to_csv('data/{0}/bank{1}/compliance_{2}_bank{1}_{3}.csv'.format(targetdate_dir, banknum, targetdate_str, runwayVec[rwy]))
 			
 			plt.legend(loc='lower left',fontsize=8)
 
 			plt.tight_layout()
-			if bank2:
-				plt.savefig('figs/bank2/' + runwayVec[rwy] + '_' + dateVec[date] + '_bank2_delay_fig.png')
-			if bank3:
-				plt.savefig('figs/bank3/' + runwayVec[rwy] + '_' + dateVec[date] + '_bank3_delay_fig.png')
-
+			plt.savefig('data/{0}/bank{1}/delay_fig_{2}_bank{1}_{3}.png'.format(targetdate_dir, banknum, targetdate_str, runwayVec[rwy]))
 			plt.close('all')
 	#plt.show()
 
 	# print('writing except not-rwy-switches to file')
 	# print('\n')
-	# logbankNum = 2
-	# if bank3:
-	# 	logbankNum = 3
-	# debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}-{}.txt'.format(daySt, logbankNum, runwayVec[rwy]))
+	# debug_except_notRwySw.to_csv('debug_except_notRwySw_{}_bank{}_{}.txt'.format(targetdate_str, banknum, runwayVec[rwy]))
 
-	df_summary.to_csv('data/bank2/summary/summary_' + dateVec[date] + '.csv')
-print('Total Number of Fluttering = ' + str(totalNumberFlutter))
+	df_summary.to_csv('data/{0}/bank{1}/summary_{2}_bank{1}.csv'.format(targetdate_dir, banknum, targetdate_str))
+	print('Total Number of Fluttering = ' + str(totalNumberFlutter))
+
+
+def run(start_date, number_of_days, bank):
+	for day in range(number_of_days):
+		day_start = start_date + dt.timedelta(days = day)
+		analyze_queue(day_start, bank)
+
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('startdate', help = 'Start date of analysis (YYYYMMDD)')
+	parser.add_argument('-d', '--days', help='Number of days to run analysis, default 1', 
+			type = int, default = 1)
+	parser.add_argument('-b', '--bank', help='Bank number to run analysis on, default 2', 
+			type = int, default = 2)
+
+	args = parser.parse_args()
+    
+	start_date = dt.datetime.strptime(args.startdate, '%Y%m%d').date()
+
+	run(start_date, args.days, args.bank)
+
+
+

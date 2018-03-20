@@ -3,42 +3,33 @@ import pandas.io.sql as psql
 import numpy as np
 import pandas as pd
 import os
+import argparse
+import datetime as dt
 
-print('Attempting to connect to database')
-#conn = psycopg2.connect("dbname='fuser' user='fuser' password='fuser' host='localhost'  ")
-conn = psycopg2.connect("dbname='fuserclt' user='fuserclt' password='fuserclt' host='localhost'  ")
-
-bank2 = True
-bank3 = False
-
-dayVarVec = []
-
-daySt = '2018-03-'
-for i in range(1,17):
-	if i < 10:
-		dayVarVec.append(daySt + '0' + str(i))
-	else:
-		dayVarVec.append(daySt + str(i))
+DBHOST = 'localhost'
+DBPORT = '5909'
+DBNAME = 'fuserclt'
+DBUSER = 'fuserclt'
+DBPW = 'fuserclt'
 
 
-def fGetData(dayVar,conn):
-	
-	if pd.Timestamp(dayVar + ' 00:00:00') <= pd.Timestamp('2018-03-10 00:00:00'):
-
-		if bank2:
+def fGetData(targetdate, banknum, conn):
+	dayVar = targetdate.strftime('%Y-%m-%d')
+	if pd.Timestamp(dayVar + ' 00:00:00') <= pd.Timestamp('2018-03-10 00:00:00'): # TODO extract and handle daylight savings for all years
+		if banknum == 2:
 			time1 = dayVar + ' 14:00:00'
 			time2 = dayVar + ' 16:00:00'
 			print(time1)
-		if bank3:
+		if banknum == 3:
 			time1 = dayVar + ' 16:00:00'
 			time2 = dayVar + ' 18:00:00'
 			print(time1)
 	else:
-		if bank2:
+		if banknum == 2:
 			time1 = dayVar + ' 13:00:00'
 			time2 = dayVar + ' 15:00:00'
 			print(time1)
-		if bank3:
+		if banknum == 3:
 			time1 = dayVar + ' 15:00:00'
 			time2 = dayVar + ' 17:00:00'
 			print(time1)
@@ -58,15 +49,35 @@ def fGetData(dayVar,conn):
 	runway
 	'''%(time1,time2)
 
-
 	df = psql.read_sql(q, conn)
 
-	#df.to_csv('DebugMeteringFuserWarehouseV2' + str(callsign) + '.csv')
-	if bank2:
-		df.to_csv('data/bank2/scheduler_analysis/bank2_scheduler_analysis_data_' + dayVar + '.csv')
-	if bank3:
-		df.to_csv('data/bank3/scheduler_analysis/bank3_scheduler_analysis_data_' + dayVar + '.csv')
+	df.to_csv('data/{0}/bank{1}/scheduler_analysis_data_{2}_bank{1}.csv'.format(targetdate.strftime('%Y/%m/%d'), banknum, dayVar))
 
 
-for dayVar in dayVarVec:
-	fGetData(dayVar,conn)
+def run(start_date, number_of_days, bank):
+	print('Attempting to connect to database')
+	conn = psycopg2.connect(dbname=DBNAME, user=DBUSER, password=DBPW, host=DBHOST, port=DBPORT)
+	for day in range(number_of_days):
+		day_start = start_date + dt.timedelta(days = day)
+		targetout = 'data/{}/bank{}'.format(day_start.strftime('%Y/%m/%d'), bank)
+		if not os.path.exists(targetout):
+			os.makedirs(targetout)
+		fGetData(day_start, bank, conn)
+	conn.close()
+
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('startdate', help = 'Start date of analysis (YYYYMMDD)')
+	parser.add_argument('-d', '--days', help='Number of days to run analysis, default 1', 
+			type = int, default = 1)
+	parser.add_argument('-b', '--bank', help='Bank number to run analysis on, default 2', 
+			type = int, default = 2)
+
+	args = parser.parse_args()
+    
+	start_date = dt.datetime.strptime(args.startdate, '%Y%m%d').date()
+
+	run(start_date, args.days, args.bank)
+
+
