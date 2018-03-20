@@ -74,12 +74,12 @@ for date in range(len(dateVec)):
 
 	for rwy in range(len(runwayVec)):
 # TODO: instead of filter by TIME_BASED_METERING, use bank start and end
-		dfFiltered = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
+		dfCurrentRunway = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
 		& (df['fix'] == df['runway']) & (df['general_stream'] == 'DEPARTURE') ]
 		
-		if len(dfFiltered)>0:
-			dfFiltered = dfFiltered.sort_values(by=['eta_msg_time','scheduled_time'])
-			dfFiltered.to_csv('data/bank2/debug/debug'+runwayVec[rwy]+dateVec[date]+'.csv')
+		if len(dfCurrentRunway)>0:
+			dfCurrentRunway = dfCurrentRunway.sort_values(by=['eta_msg_time','scheduled_time'])
+			dfCurrentRunway.to_csv('data/bank2/debug/debug'+runwayVec[rwy]+dateVec[date]+'.csv')
 
 			activeVec = []
 
@@ -88,7 +88,7 @@ for date in range(len(dateVec)):
 			df_compliance = pd.DataFrame(np.empty((1,len(cols)), dtype=object),columns=cols)
 			idx = -1
 			
-			etaMsgVec0 = dfFiltered['eta_msg_time'].drop_duplicates()
+			etaMsgVec0 = dfCurrentRunway['eta_msg_time'].drop_duplicates()
 			etaMsgVec = etaMsgVec0.reset_index(drop=True)
 
 			displayEta = []
@@ -124,26 +124,30 @@ for date in range(len(dateVec)):
 
 			for ts in range(len(etaMsgVec)):
 
-				dfMeteredActive = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts] ) & (dfFiltered['schedule_priority'].isin(['NO_PRIORITY_DEPARTURE_TAXI' , 'NO_PRIORITY_DEPARTURE_TAXI_AMA' ]))]
-				dfMeteredAMA = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts] ) & (dfFiltered['schedule_priority'] == 'NO_PRIORITY_DEPARTURE_TAXI_AMA')]
-				dfMeteredGate = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts]) & (dfFiltered['schedule_priority'] == 'GATE_DEPARTURE_PLANNED')]
-				dfMeteredUncertain = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts]) & (dfFiltered['schedule_priority'] == 'GATE_DEPARTURE_UNCERTAIN')]
-				dfMeteredReady = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts]) & (dfFiltered['schedule_priority'] == 'GATE_DEPARTURE_READY')]
-				#print(pd.Timedelta(dfMeteredUncertain['ttot_minus_utot'].max())/np.timedelta64(1, 's'))
-				maxActive[ts] = pd.Timedelta(dfMeteredActive['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
-				maxPlanned[ts] = pd.Timedelta(dfMeteredGate['ttot_minus_utot'].max() ) /np.timedelta64(1, 's')
-				maxUncertain[ts] = pd.Timedelta(dfMeteredUncertain['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
-				maxReady[ts] = pd.Timedelta(dfMeteredReady['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
-				meanActive[ts] = np.mean( pd.to_timedelta(dfMeteredGate['ttot_minus_utot']) / np.timedelta64(1, 's') )
-				meanPlannedDelay[ts] =  np.mean( pd.to_timedelta(dfMeteredGate['ttot_minus_utot']) / np.timedelta64(1, 's') )
-				numPlanned[ts] = len(np.array(pd.to_timedelta(dfMeteredGate['ttot_minus_utot'])))
-				numActive[ts] = len(np.array(pd.to_timedelta(dfMeteredActive['ttot_minus_utot'])))
-				numAMA[ts] = len(np.array(pd.to_timedelta(dfMeteredAMA['ttot_minus_utot'])))
-				numReady[ts] = len(np.array(pd.to_timedelta(dfMeteredReady['ttot_minus_utot'])))
-				dfMeter = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts] )]
+				dfActive = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'].isin(['NO_PRIORITY_DEPARTURE_TAXI' , 'NO_PRIORITY_DEPARTURE_TAXI_AMA' ]))]
+				dfAMA = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'] == 'NO_PRIORITY_DEPARTURE_TAXI_AMA')]
+				dfGate = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_PLANNED')]
+				dfUncertain = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_UNCERTAIN')]
+				dfReady = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_READY')]
+				#print(pd.Timedelta(dfUncertain['ttot_minus_utot'].max())/np.timedelta64(1, 's'))
+				
+				dfActiveALL = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] )\
+				& (dfCurrentRunway['model_schedule_state'].isin(['OUT' , 'TAXI' , 'QUEUE']))]
+
+				maxActive[ts] = pd.Timedelta(dfActive['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
+				maxPlanned[ts] = pd.Timedelta(dfGate['ttot_minus_utot'].max() ) /np.timedelta64(1, 's')
+				maxUncertain[ts] = pd.Timedelta(dfUncertain['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
+				maxReady[ts] = pd.Timedelta(dfReady['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
+				meanActive[ts] = np.mean( pd.to_timedelta(dfGate['ttot_minus_utot']) / np.timedelta64(1, 's') )
+				meanPlannedDelay[ts] =  np.mean( pd.to_timedelta(dfGate['ttot_minus_utot']) / np.timedelta64(1, 's') )
+				numPlanned[ts] = len(np.array(pd.to_timedelta(dfGate['ttot_minus_utot'])))
+				numActive[ts] = len(np.array(pd.to_timedelta(dfActive['ttot_minus_utot'])))
+				numAMA[ts] = len(np.array(pd.to_timedelta(dfAMA['ttot_minus_utot'])))
+				numReady[ts] = len(np.array(pd.to_timedelta(dfReady['ttot_minus_utot'])))
+				dfMeter = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] )]
 				stRunway = str(dfMeter.loc[dfMeter.index[0],'metering_display']).split(',')
 				
-				target_df = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts] ) ]
+				target_df = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] ) ]
 				targetVec[ts] = target_df.loc[target_df.index[0],'target_queue_buffer'] / float(60000)
 				upperBoundVec[ts] = target_df.loc[target_df.index[0],'metering_display_entry_offset'] / float(60000)
 				lowerBoundVec[ts] = target_df.loc[target_df.index[0],'metering_display_exit_offset'] / float(60000)
@@ -152,91 +156,114 @@ for date in range(len(dateVec)):
 				if runwayVec[rwy] in stRunway:
 					meterVec[ts] = 1
 
-				if metered:
-					for flight in range(len(dfMeteredActive['flight_key'])):
-						if dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] not in activeVec:
-							activeVec.append(dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'])
+				
+				for flight in range(len(dfActiveALL['flight_key'])):
+					if dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] not in activeVec:
+						activeVec.append(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
+						if metered:
 							if meterVec[ts] == 1:
 								idx+=1
-								dfCompliance = dfMF[ dfMF['gufi'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] ]
-								if len(dfCompliance['gufi']) > 0:
-									compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) \
-									- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready']) ).total_seconds() / float(60)
-									
-								else:
-									compliance = 'nan'
+								
 
-								try:	
-									dfLastSchedule = dfFiltered[ (dfFiltered['eta_msg_time'] == etaMsgVec[ts-1] ) \
-									& (dfFiltered['flight_key'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] )]
+									
+								dfLastSchedule = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts-1] ) \
+								& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] )]
+
+								if len(dfLastSchedule) > 0:
 									lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
 									lastPriority = dfLastSchedule.loc[dfLastSchedule.index[0],'schedule_priority']
 									lastGate = dfLastSchedule.loc[dfLastSchedule.index[0],'gate']
-									lastTOBT = df[(df['fix'] == df['gate'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
-									&(df['flight_key'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] ) ]
+									
 
 # TODO make identification of GAs more robust
 									if 'GA' not in lastGate:
 										if lastState in ['PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
-											df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
+											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+											
+											dfCompliance = dfMF[ dfMF['gufi'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ]
+											if len(dfCompliance['gufi']) > 0:
+												compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) \
+												- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready']) ).total_seconds() / float(60)
+											else:
+												compliance = 'nan'
+
 											df_compliance.loc[idx,'compliance'] = compliance
 											df_compliance.loc[idx,'previous_state'] = lastState
 
 
 										if lastPriority in ['APREQ_DEPARTURE','EDCT_DEPARTURE']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
-											df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
+											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
-											apreqCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
-											pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
-											# print('APREQ COMPLIANCE')
-											# print(apreqCompliance)
-											df_compliance.loc[idx,'compliance'] = apreqCompliance
+											#####
+											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
+											& (df['fix'] == df['gate'] ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+											if len(lastTOBT)>0:
+												apreqCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
+												pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
+												# print('APREQ COMPLIANCE')
+												# print(apreqCompliance)
+												df_compliance.loc[idx,'compliance'] = apreqCompliance
+											#####
 											df_compliance.loc[idx,'previous_state'] = lastPriority
 
 										if lastPriority in ['EXEMPT_DEPARTURE']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
-											df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
+											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
-											exemptCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
-											pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
-											df_compliance.loc[idx,'compliance'] = exemptCompliance
+											#####
+											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
+											& (df['fix'] == df['gate'] ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+											if len(lastTOBT)>0:
+												exemptCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
+												pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
+												# print('APREQ COMPLIANCE')
+												# print(apreqCompliance)
+												df_compliance.loc[idx,'compliance'] = exemptCompliance
+											#####
 											df_compliance.loc[idx,'previous_state'] = lastPriority
 											# print('EXEMPT DEPARTURE FOUND')
 
 									else:
 										df_compliance.loc[idx,'runway'] = runwayVec[rwy]
-										df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
+										df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 										df_compliance.loc[idx,'ts'] = ts
 										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
-										gaCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
-										pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
-										df_compliance.loc[idx,'compliance'] = gaCompliance
+										#####
+										lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
+										& (df['fix'] == df['gate'] ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+										if len(lastTOBT)>0:
+											gaCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
+											pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
+											# print('APREQ COMPLIANCE')
+											# print(apreqCompliance)
+											df_compliance.loc[idx,'compliance'] = gaCompliance
+										#####
 										if lastState in ['PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN']:
 											df_compliance.loc[idx,'previous_state'] = 'GA ' + lastState
 										if lastPriority in ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE']:
 											df_compliance.loc[idx,'previous_state'] = 'GA ' + lastPriority
 								
-								except:
+								else:
 									if ts > 0:
 										print('LOOK INTO THIS POSSIBLE RUNWAY SWITCH')
 										print(etaMsgVec[ts])
 										print(runwayVec[rwy])
-										print(dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'])
+										print(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
 
 										df_compliance.loc[idx,'runway'] = runwayVec[rwy]
-										df_compliance.loc[idx,'gufi'] = dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key']
+										df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 										df_compliance.loc[idx,'ts'] = ts
 										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 										df_compliance.loc[idx,'compliance'] = 0
 										df_compliance.loc[idx,'previous_state'] = 'RUNWAY_SWITCH'
 										tempDF = df[(df['fix'] == df['runway'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
-										&(df['flight_key'] == dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'] ) ]
+										&(df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) ]
 										previousRunway = tempDF.loc[tempDF.index[0],'runway']
 
 										print('previousRunway is {}, runwayVec[rwy] is {}'.format(previousRunway, runwayVec[rwy]))
@@ -245,19 +272,13 @@ for date in range(len(dateVec)):
 										else: 
 											print('Not a runway switch! Adding to file:') #TODO: write out to file
 											debug_except_notRwySw = debug_except_notRwySw.append(pd.DataFrame(
-												{'gufi':dfMeteredActive.loc[dfMeteredActive.index[flight],'flight_key'], 
+												{'gufi':dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'], 
 												'rwy':runwayVec[rwy], 
 												'etaMsgTime':etaMsgVec[ts]}, index=[0]))
 											print(debug_except_notRwySw)
-									print('\n')
+										print('\n')
 				
-				minPlannedDelay[ts] = pd.Timedelta(dfMeteredGate['ttot_minus_utot'].min() ) /np.timedelta64(1, 's')
-				test = pd.to_timedelta(dfMeteredGate['ttot_minus_utot']) / np.timedelta64(1, 's')
-				numAboveTarget[ts] = 0
-				if len(test) > 0:
-					for j in range(len(test)):
-						if test[test.index[j]] > 720:
-							numAboveTarget[ts] +=1
+	
 
 			timeOn = ''
 			timeOff = ''
