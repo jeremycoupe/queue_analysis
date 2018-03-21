@@ -122,7 +122,7 @@ for date in range(len(dateVec)):
 
 			plt.figure(figsize = (14,10))
 
-			for ts in range(len(etaMsgVec)):
+			for ts in range(1,len(etaMsgVec)):
 
 				dfActive = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'].isin(['NO_PRIORITY_DEPARTURE_TAXI' , 'NO_PRIORITY_DEPARTURE_TAXI_AMA' ]))]
 				dfAMA = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'] == 'NO_PRIORITY_DEPARTURE_TAXI_AMA')]
@@ -164,8 +164,6 @@ for date in range(len(dateVec)):
 							if meterVec[ts] == 1:
 								idx+=1
 								
-
-									
 								dfLastSchedule = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts-1] ) \
 								& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] )]
 
