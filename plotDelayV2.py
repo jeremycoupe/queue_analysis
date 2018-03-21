@@ -131,7 +131,7 @@ for date in range(len(dateVec)):
 				dfReady = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_READY')]
 				#print(pd.Timedelta(dfUncertain['ttot_minus_utot'].max())/np.timedelta64(1, 's'))
 				
-				dfActiveALL = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] )\
+				dfActiveALL = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] )\
 				& (dfCurrentRunway['model_schedule_state'].isin(['OUT' , 'TAXI' , 'QUEUE']))]
 
 				maxActive[ts] = pd.Timedelta(dfActive['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
