@@ -83,7 +83,7 @@ for date in range(len(dateVec)):
 
 			activeVec = []
 
-			cols = ['gufi','runway','ts','msg_time','compliance','previous_state']
+			cols = ['gufi','runway','ts','eta_msg_time','compliance','previous_state']
 
 			df_compliance = pd.DataFrame(np.empty((1,len(cols)), dtype=object),columns=cols)
 			idx = -1
@@ -181,7 +181,7 @@ for date in range(len(dateVec)):
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
-											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+											df_compliance.loc[idx,'eta_msg_time'] = etaMsgVec[ts]
 											
 											dfCompliance = dfMF[ dfMF['gufi'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ]
 											if len(dfCompliance['gufi']) > 0:
@@ -198,10 +198,10 @@ for date in range(len(dateVec)):
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
-											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+											df_compliance.loc[idx,'eta_msg_time'] = etaMsgVec[ts]
 											#####
 											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-											& (df['fix'] == df['gate'] ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+											& (df['fix'] == df['gate'] ) & (df['eta_msg_time'] == etaMsgVec[ts-1] ) ]
 											if len(lastTOBT)>0:
 												apreqCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
 												pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
@@ -215,10 +215,10 @@ for date in range(len(dateVec)):
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
-											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+											df_compliance.loc[idx,'eta_msg_time'] = etaMsgVec[ts]
 											#####
 											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-											& (df['fix'] == df['gate'] ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+											& (df['fix'] == df['gate'] ) & (df['eta_msg_time'] == etaMsgVec[ts-1] ) ]
 											if len(lastTOBT)>0:
 												exemptCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
 												pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
@@ -233,10 +233,10 @@ for date in range(len(dateVec)):
 										df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 										df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 										df_compliance.loc[idx,'ts'] = ts
-										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+										df_compliance.loc[idx,'eta_msg_time'] = etaMsgVec[ts]
 										#####
 										lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-										& (df['fix'] == df['gate'] ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+										& (df['fix'] == df['gate'] ) & (df['eta_msg_time'] == etaMsgVec[ts-1] ) ]
 										if len(lastTOBT)>0:
 											gaCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
 											pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'scheduled_time']) ).total_seconds() / float(60)
@@ -259,7 +259,7 @@ for date in range(len(dateVec)):
 										df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 										df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 										df_compliance.loc[idx,'ts'] = ts
-										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
+										df_compliance.loc[idx,'eta_msg_time'] = etaMsgVec[ts]
 										df_compliance.loc[idx,'compliance'] = 0
 										df_compliance.loc[idx,'previous_state'] = 'RUNWAY_SWITCH'
 										tempDF = df[(df['fix'] == df['runway'])&(df['eta_msg_time'] == etaMsgVec[ts-1] )\
@@ -310,9 +310,9 @@ for date in range(len(dateVec)):
 			# plt.plot(np.arange(len(maxActive)) , meanPlannedDelay / float(60) , color = 'm',  alpha = 0.5, label = 'Mean Planned Delay Runway ' + runway)
 			# plt.plot(np.arange(len(maxActive)) , minPlannedDelay / float(60) , color = 'r' , alpha = 0.5, label = 'Min Planned Delay Runway ' + runway)	
 		
-			plt.plot(np.arange(len(maxActive)) , upperBoundVec , '--', color = 'grey' , alpha = 0.4*(j+1), linewidth = 3, label = str(upperBoundVec[-1]) + ' Minute Upper Threshold')
-			plt.plot(np.arange(len(maxActive)) , targetVec , color = 'black' ,alpha = 0.4*(j+1), linewidth = 3, label = str(targetVec[-1]) + ' Minute Target Queue')
-			plt.plot(np.arange(len(maxActive)) , lowerBoundVec , color = 'grey' ,alpha = 0.4*(j+1), linewidth = 3, label = str(lowerBoundVec[-1]) + ' Minute Lower Threshold')
+			plt.plot(np.arange(len(maxActive)) , upperBoundVec , '--', color = 'grey' , alpha = 0.4, linewidth = 3, label = str(upperBoundVec[-1]) + ' Minute Upper Threshold')
+			plt.plot(np.arange(len(maxActive)) , targetVec , color = 'black' ,alpha = 0.4, linewidth = 3, label = str(targetVec[-1]) + ' Minute Target Queue')
+			plt.plot(np.arange(len(maxActive)) , lowerBoundVec , color = 'grey' ,alpha = 0.4, linewidth = 3, label = str(lowerBoundVec[-1]) + ' Minute Lower Threshold')
 
 			plt.ylabel('max(TTOT - UTOT) [Minutes]')
 			plt.xticks(np.arange(0,len(etaMsgVec),90),displayEta,rotation=45,fontsize = 8)
