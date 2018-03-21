@@ -32,7 +32,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 		except:
 			metered = False
 
-	cols0 = ['date','runway','baloon_metric','max_ama_count','max_active_count','average_compliance','count_non_compliant_5',\
+	cols0 = ['date','runway','baloon_metric','target','target_timestamp','max_ama_count','max_active_count','average_compliance','count_non_compliant_5',\
 	'meter_switch_on_off','meter_on','meter_off','count_apreq','count_edct','count_exempt','count_runway_switch',\
 	'count_planned' , 'count_ready' , 'count_uncertain','count_ga_uncertain','count_ga_apreq',\
 	'count_ga_edct']
@@ -319,6 +319,22 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 			df_summary.loc[idS,'count_ga_uncertain'] = len(df_compliance[df_compliance['previous_state'] == 'GA PUSHBACK_UNCERTAIN'])
 			df_summary.loc[idS,'count_ga_apreq'] = len(df_compliance[df_compliance['previous_state'] == 'GA APREQ_DEPARTURE'])
 			df_summary.loc[idS,'count_ga_edct'] = len(df_compliance[df_compliance['previous_state'] == 'GA EDCT_DEPARTURE'])
+
+			# df_summary.loc[idS,'target'] = targetVec[0]
+			# df_summary.loc[idS,'target_timestamp'] = etaMsgVec[0]
+			targetSt = str(targetVec[0])
+			targetTimeSt = etaMsgVec[0]
+
+			for v in range(1,len(targetVec)):
+				if targetVec[v] != targetVec[v-1]:
+					targetSt = targetSt + '--' + str(targetVec[v])
+					targetTimeSt = targetTimeSt + '--' + etaMsgVec[v]
+
+			df_summary.loc[idS,'target'] = targetSt
+			df_summary.loc[idS,'target_timestamp'] = targetTimeSt
+
+
+
 
 			uniqueState = ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE','RUNWAY_SWITCH',\
 			'PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN','GA PUSHBACK_UNCERTAIN','GA PUSHBACK_PLANNED',\
