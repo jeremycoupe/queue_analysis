@@ -41,7 +41,7 @@ for fileName in range(len(files)):
 
 
 
-		st_date_var = getMeterDateString(dateVar)
+		#st_date_var = getMeterDateString(dateVar)
 			
 		# target = False																			
 		# for row in range(len(dfMeter['date'])):
