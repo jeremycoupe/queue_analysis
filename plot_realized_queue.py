@@ -11,12 +11,11 @@ import fnmatch
 
 reportsdir = '/home/atd2data/reports/summary'
 
-cols = ['gufi','runway','target','actualOff', 'actualOut' , 'Total Excess Taxi' , 'Ramp Excess Taxi' , 'AMA Excess Taxi' ,'AMA model', 'predictedDelay','controlled' ,'Gate Hold']
-runwayVec = ['18L' , '18C' , '36R' , '36C'] # hardcoded to CLT
+cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', 'Ramp Excess Taxi', 'AMA Excess Taxi', 'AMA model', 'predictedDelay', 'controlled','Gate Hold']
+runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
 
 def plot_queue(targetdate, banknum):
 	targetdir = os.path.join(reportsdir, '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day))
-	targetdate_dir = targetdate.strftime('%Y/%m/%d') #TODO clean up with os.path
 	try:
 		for f in os.listdir(targetdir):
 			if fnmatch.fnmatch(f, '*fullFlightSummary.v*'):
@@ -27,7 +26,7 @@ def plot_queue(targetdate, banknum):
 		sys.exit()
 	df_queue = pd.read_csv('data/{0}/bank{1}/summary_{2}_bank{1}.csv'.format(targetdate.strftime('%Y/%m/%d'), banknum, targetdate.strftime('%Y-%m-%d')),sep=',',index_col=False)
 
-	dateVar = targetdate.strftime('%Y%m%d')
+	dateVar = targetdate.strftime('%Y-%m-%d')
 	print(dateVar)
 	
 	idx = -1
@@ -94,21 +93,21 @@ def plot_queue(targetdate, banknum):
 		
 		if len(dfSorted)>0:
 
-			dfSorted.to_csv('data/{0}/bank{1}/{2}_bank{1}_{3}.csv'.format(targetdate_dir, banknum, dateVar, runwayVec[rwy]))
+			dfSorted.to_csv(os.path.join(targetdir, 'realized_queue_{}_bank{}_{}.csv'.format(dateVar, banknum, runwayVec[rwy])) # why is this repeated?
 			
 			ax = dfSorted.plot(x='actualOff',y='target',figsize=(14,10))
 			#dfSorted.plot.bar(x='actualOff',y=['Total Excess Taxi', 'AMA Excess Taxi','Ramp Excess Taxi'], color = ['cyan' , 'magenta' , 'grey'],alpha=0.6,ax=ax)
 			dfSorted.plot.bar(x='actualOff',y=['AMA Excess Taxi','Ramp Excess Taxi'],width=0.3, position = -0.25, color = [ 'magenta' , 'grey'],alpha=0.6,ax=ax)
 			dfSorted.plot.bar(x='actualOff',y=['Total Excess Taxi','Gate Hold'], width = 0.15, position = 0.5, stacked=True, color = [ 'cyan' , 'red'],alpha=0.6,ax=ax)
-			plt.title('Runway ' + runwayVec[rwy] + ' ' + dateVar)
+			plt.title('Runway ' + runwayVec[rwy] + ' ' + targetdate.strftime('%Y-%m-%d'))
 			plt.ylabel('Excess Taxi Time [Minutes]')
 			plt.xlabel('Actuall Off Time [UTC]')
 			plt.ylim([0,35])
 			plt.tight_layout()
 			#plt.savefig('figs/flightSpecificDelay/' + runwayVec[rwy]+dateVecIADS[date] + '.png')
-			plt.savefig('data/{0}/bank{1}/{2}_bank{1}_{3}.png'.format(targetdate_dir, banknum, dateVar, runwayVec[rwy]))
+			plt.savefig(os.path.join(targetdir, 'realized_queue_fig_{}_bank{}_{}.png'.format(dateVar, banknum, runwayVec[rwy])))
 			plt.close('all')
-			dfSorted.to_csv('data/{0}/bank{1}/{2}_bank{1}_{3}.csv'.format(targetdate_dir, banknum, dateVar, runwayVec[rwy])) # why is this repeated?
+			dfSorted.to_csv(os.path.join(targetdir, 'realized_queue_{}_bank{}_{}.csv'.format(dateVar, banknum, runwayVec[rwy])) # why is this repeated?
 
 
 def run(start_date, number_of_days, bank):

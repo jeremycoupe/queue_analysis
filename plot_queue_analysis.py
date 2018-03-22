@@ -28,15 +28,18 @@ def analyze_queue(targetdate, banknum):
 		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF), sep=',', index_col=False)
 		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
 	except:
+		print('metered flights output not found')
 		try:
-			dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_'+ targetdate_str + '.csv'  , sep=',' , index_col=False)
+			dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_'+ targetdate_str + '.csv' , sep=',', index_col=False)
 		except:
 			metered = False
 
-	cols0 = ['date','runway','balloon_metric','target','target_timestamp','max_ama_count','max_active_count','average_compliance','count_non_compliant_5',\
-	'meter_switch_on_off','meter_on','meter_off','count_apreq','count_edct','count_exempt','count_runway_switch',\
-	'count_planned' , 'count_ready' , 'count_uncertain','count_ga_uncertain','count_ga_apreq',\
-	'count_ga_edct']
+	cols0 = ['date', 'runway', 'balloon_metric', 'target', 'target_timestamp', 
+		'max_ama_count', 'max_active_count', 'average_compliance', 'count_non_compliant_5', 
+		'meter_switch_on_off', 'meter_on', 'meter_off', 
+		'count_apreq', 'count_edct', 'count_exempt', 'count_runway_switch',
+		'count_planned', 'count_ready', 'count_uncertain', 
+		'count_ga_uncertain', 'count_ga_apreq', 'count_ga_edct']
 	df_summary = pd.DataFrame(np.empty((1,len(cols0)), dtype=object),columns=cols0)
 	idS = -1
 
@@ -64,7 +67,6 @@ def analyze_queue(targetdate, banknum):
 			for i in range(len(etaMsgVec)):
 				if i % 90 == 0:
 					displayEta.append(str(etaMsgVec[i]).split('.')[0])
-					#print('HERE')
 			#print(etaMsgVec)
 
 			maxActive = np.zeros(len(etaMsgVec))
@@ -91,35 +93,40 @@ def analyze_queue(targetdate, banknum):
 			plt.figure(figsize = (14,10))
 
 			for ts in range(len(etaMsgVec)):
-				dfActive = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'].isin(['NO_PRIORITY_DEPARTURE_TAXI' , 'NO_PRIORITY_DEPARTURE_TAXI_AMA' ]))]
-				dfAMA = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] ) & (dfCurrentRunway['schedule_priority'] == 'NO_PRIORITY_DEPARTURE_TAXI_AMA')]
-				dfGate = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_PLANNED')]
-				dfUncertain = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_UNCERTAIN')]
-				dfReady = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts]) & (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_READY')]
+				dfActive = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts]) 
+								& (dfCurrentRunway['schedule_priority'].isin(['NO_PRIORITY_DEPARTURE_TAXI', 'NO_PRIORITY_DEPARTURE_TAXI_AMA']))]
+				dfAMA = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts]) 
+								& (dfCurrentRunway['schedule_priority'] == 'NO_PRIORITY_DEPARTURE_TAXI_AMA')]
+				dfGate = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts]) 
+								& (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_PLANNED')]
+				dfUncertain = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts]) 
+								& (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_UNCERTAIN')]
+				dfReady = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts]) 
+								& (dfCurrentRunway['schedule_priority'] == 'GATE_DEPARTURE_READY')]
 				### this is a new vector to keep track of active including controlled and exempt
-				dfActiveALL = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] )\
-				& (dfCurrentRunway['model_schedule_state'].isin(['OUT' , 'TAXI' , 'QUEUE']))]
+				dfActiveALL = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts])
+								& (dfCurrentRunway['model_schedule_state'].isin(['OUT', 'TAXI', 'QUEUE']))]
 				#####
 				#print(pd.Timedelta(dfUncertain['ttot_minus_utot'].max())/np.timedelta64(1, 's'))
 				maxActive[ts] = pd.Timedelta(dfActive['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
-				maxPlanned[ts] = pd.Timedelta(dfGate['ttot_minus_utot'].max() ) /np.timedelta64(1, 's')
+				maxPlanned[ts] = pd.Timedelta(dfGate['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
 				maxUncertain[ts] = pd.Timedelta(dfUncertain['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
 				maxReady[ts] = pd.Timedelta(dfReady['ttot_minus_utot'].max()) / np.timedelta64(1, 's')
-				meanActive[ts] = np.mean( pd.to_timedelta(dfGate['ttot_minus_utot']) / np.timedelta64(1, 's') )
-				meanPlannedDelay[ts] =  np.mean( pd.to_timedelta(dfGate['ttot_minus_utot']) / np.timedelta64(1, 's') )
+				meanActive[ts] = np.mean( pd.to_timedelta(dfGate['ttot_minus_utot']) / np.timedelta64(1, 's'))
+				meanPlannedDelay[ts] =  np.mean( pd.to_timedelta(dfGate['ttot_minus_utot']) / np.timedelta64(1, 's'))
 				numPlanned[ts] = len(np.array(pd.to_timedelta(dfGate['ttot_minus_utot'])))
 				numActive[ts] = len(np.array(pd.to_timedelta(dfActiveALL['ttot_minus_utot'])))
 				numAMA[ts] = len(np.array(pd.to_timedelta(dfAMA['ttot_minus_utot'])))
 				numReady[ts] = len(np.array(pd.to_timedelta(dfReady['ttot_minus_utot'])))
-				dfMeter = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] )]
+				dfMeter = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts])]
 				stRunway = str(dfMeter.loc[dfMeter.index[0],'metering_display']).split('_')
 				meter_mode = dfMeter.loc[dfMeter.index[0],'metering_mode']
 
-				target_df = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts] ) ]
+				target_df = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts])]
 				targetVec[ts] = target_df.loc[target_df.index[0],'target_queue_buffer'] / float(60000)
 				upperBoundVec[ts] = target_df.loc[target_df.index[0],'metering_display_entry_offset'] / float(60000)
 				lowerBoundVec[ts] = target_df.loc[target_df.index[0],'metering_display_exit_offset'] / float(60000)
-				balloonMetricVec[ts] = max([0, maxActive[ts]/float(60) - targetVec[ts]] )
+				balloonMetricVec[ts] = max([0, maxActive[ts]/float(60) - targetVec[ts]])
 				#print(stRunway)
 				
 				if meter_mode == 'TIME_BASED_METERING':
@@ -136,8 +143,8 @@ def analyze_queue(targetdate, banknum):
 							if meterVec[ts] == 1:
 								idx+=1
 
-								dfLastSchedule = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts-1] ) \
-								& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] )]
+								dfLastSchedule = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts-1]) 
+												& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])]
 
 								if len(dfLastSchedule) > 0:
 									lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
@@ -152,10 +159,11 @@ def analyze_queue(targetdate, banknum):
 											df_compliance.loc[idx,'ts'] = ts
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 											#######
-											dfCompliance = dfMF[ dfMF['gufi'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ]
+											dfCompliance = dfMF[ dfMF['gufi'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']]
 											if len(dfCompliance['gufi']) > 0:
-												compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) \
-												- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready']) ).total_seconds() / float(60)
+												compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) 
+												- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready'])
+														).total_seconds() / float(60)
 											else:
 												compliance = 'nan'
 											df_compliance.loc[idx,'compliance'] = compliance
@@ -168,12 +176,14 @@ def analyze_queue(targetdate, banknum):
 											df_compliance.loc[idx,'ts'] = ts
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 											###########
-											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-											& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] )]
+											lastTOBT = df[(df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
+													& (df['gate_sta'].notnull()) 
+													& (df['msg_time'] == etaMsgVec[ts-1])]
 
 											if len(lastTOBT) > 0:
-												apreqCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
-												pd.Timestamp(lastTOBT.loc[lastTOBT.index[ 0 ],'gate_sta']) ).total_seconds() / float(60)
+												apreqCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) 
+														- pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta']) 
+																).total_seconds() / float(60)
 												# print(etaMsgVec[ts])
 												# print(runwayVec[rwy])
 												# print(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
@@ -190,12 +200,14 @@ def analyze_queue(targetdate, banknum):
 											df_compliance.loc[idx,'ts'] = ts
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 											#######
-											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-											& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+											lastTOBT = df[(df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
+																		& (df['gate_sta'].notnull()) 
+																		& (df['msg_time'] == etaMsgVec[ts-1])]
 
 											if len(lastTOBT) > 0:
-												exemptCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
-												pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta']) ).total_seconds() / float(60)
+												exemptCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) 
+														- pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta'])
+																).total_seconds() / float(60)
 												df_compliance.loc[idx,'compliance'] = exemptCompliance
 											#######
 											df_compliance.loc[idx,'previous_state'] = lastPriority
@@ -207,12 +219,14 @@ def analyze_queue(targetdate, banknum):
 										df_compliance.loc[idx,'ts'] = ts
 										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 										#######
-										lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-										& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] )] 
+										lastTOBT = df[(df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']) 
+																	& (df['gate_sta'].notnull()) 
+																	& (df['msg_time'] == etaMsgVec[ts-1])] 
 
 										if len(lastTOBT) > 0:
-											gaCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
-											pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta']) ).total_seconds() / float(60)
+											gaCompliance = pd.Timedelta(pd.Timestamp(etaMsgVec[ts]) 
+														- pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta'])
+																).total_seconds() / float(60)
 											df_compliance.loc[idx,'compliance'] = gaCompliance
 										#######
 										if lastState in ['PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN']:
@@ -233,8 +247,8 @@ def analyze_queue(targetdate, banknum):
 										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 										df_compliance.loc[idx,'compliance'] = 0
 										df_compliance.loc[idx,'previous_state'] = 'RUNWAY_SWITCH'
-										tempDF = df[(df['msg_time'] == etaMsgVec[ts-1] )\
-										&(df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) ]
+										tempDF = df[(df['msg_time'] == etaMsgVec[ts-1])
+												& (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])]
 										previousRunway = tempDF.loc[tempDF.index[0],'runway']
 
 										# print('previousRunway is {}, runwayVec[rwy] is {}'.format(previousRunway, runwayVec[rwy]))
@@ -255,7 +269,7 @@ def analyze_queue(targetdate, banknum):
 			numSwitch = 0
 			for k in range(1,len(meterVec)):
 				if meterVec[k] != meterVec[k-1]:
-					numSwitch +=1
+					numSwitch += 1
 
 				if meterVec[k] - meterVec[k-1] == 1:
 					timeOn = timeOn + '--' + etaMsgVec[k]
@@ -265,42 +279,42 @@ def analyze_queue(targetdate, banknum):
 
 			if numSwitch > 2:
 				print(targetdate_str  + ' ' + runwayVec[rwy] +  ' METERING FLUTTERED ON/OFF')
-				totalNumberFlutter +=1
+				totalNumberFlutter += 1
 
 			#print(meterVec)
-			plt.subplot(3,1,1)
-			plt.plot(np.arange(len(maxActive)) , maxActive / float(60) , color = 'blue', linewidth = 5, label = 'Max Active Delay Runway ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , maxPlanned / float(60), color = 'orange', linewidth = 2, alpha = alphaVal, label = 'Max Planning Delay Runway ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , maxReady / float(60), color = 'green', linewidth = 2, alpha = alphaVal, label = 'Max Ready Delay Runway ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , meterModeVec , color = 'black', linestyle= '--', linewidth = 2, alpha = alphaVal, label = 'Time Based Metering ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , meterVec , color = 'black', linewidth = 2, alpha = alphaVal, label = 'Metering ON ' + runwayVec[rwy])
-			#plt.plot(np.arange(len(maxActive)) , np.cumsum(balloonMetricVec) / float(35) , color = 'red', linewidth = 2, alpha = alphaVal, label = 'Balloon Metric ' + runwayVec[rwy])
-			#plt.plot(np.arange(len(maxActive)) , maxUncertain / float(60) , label = 'Max Uncertain Delay Runway ' + runwayVec[rwy])
-			# plt.plot(np.arange(len(maxActive)) , meanPlannedDelay / float(60) , color = 'm',  alpha = 0.5, label = 'Mean Planned Delay Runway ' + runway)
-			# plt.plot(np.arange(len(maxActive)) , minPlannedDelay / float(60) , color = 'r' , alpha = 0.5, label = 'Min Planned Delay Runway ' + runway)	
+			plt.subplot(3, 1, 1)
+			plt.plot(np.arange(len(maxActive)), maxActive / float(60), color='blue', linewidth=5, label='Max Active Delay Runway ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), maxPlanned / float(60), color='orange', linewidth=2, alpha=alphaVal, label='Max Planning Delay Runway ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), maxReady / float(60), color='green', linewidth=2, alpha=alphaVal, label='Max Ready Delay Runway ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), meterModeVec, color='black', linestyle='--', linewidth=2, alpha=alphaVal, label='Time Based Metering ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), meterVec, color='black', linewidth=2, alpha=alphaVal, label='Metering ON ' + runwayVec[rwy])
+			#plt.plot(np.arange(len(maxActive)), np.cumsum(balloonMetricVec) / float(35), color = 'red', linewidth = 2, alpha = alphaVal, label = 'Balloon Metric ' + runwayVec[rwy])
+			#plt.plot(np.arange(len(maxActive)), maxUncertain / float(60), label = 'Max Uncertain Delay Runway ' + runwayVec[rwy])
+			# plt.plot(np.arange(len(maxActive)), meanPlannedDelay / float(60), color = 'm',  alpha = 0.5, label = 'Mean Planned Delay Runway ' + runway)
+			# plt.plot(np.arange(len(maxActive)), minPlannedDelay / float(60), color = 'r' , alpha = 0.5, label = 'Min Planned Delay Runway ' + runway)	
 
-			plt.plot(np.arange(len(maxActive)) , upperBoundVec , '--', color = 'grey' , alpha = 0.6, linewidth = 3, label = str(upperBoundVec[-1]) + ' Minute Upper Threshold')
-			plt.plot(np.arange(len(maxActive)) , targetVec , color = 'black' ,alpha = 0.6, linewidth = 3, label = str(targetVec[-1]) + ' Minute Target Queue')
-			plt.plot(np.arange(len(maxActive)) , lowerBoundVec , color = 'grey' ,alpha = 0.6, linewidth = 3, label = str(lowerBoundVec[-1]) + ' Minute Lower Threshold')
+			plt.plot(np.arange(len(maxActive)), upperBoundVec, '--', color='grey', alpha=alphaVal, linewidth=3, label=str(upperBoundVec[-1]) + ' Minute Upper Threshold')
+			plt.plot(np.arange(len(maxActive)), targetVec, color='black', alpha=alphaVal, linewidth=3, label=str(targetVec[-1]) + ' Minute Target Queue')
+			plt.plot(np.arange(len(maxActive)), lowerBoundVec, color='grey', alpha=alphaVal, linewidth=3, label=str(lowerBoundVec[-1]) + ' Minute Lower Threshold')
 
 			plt.ylabel('max(TTOT - UTOT) [Minutes]')
-			plt.xticks(np.arange(0,len(etaMsgVec),90),displayEta,rotation=45,fontsize = 8)
+			plt.xticks(np.arange(0, len(etaMsgVec), 90), displayEta, rotation=45, fontsize=8)
 			plt.title('Runway ' + runwayVec[rwy] + ' Delay ' + targetdate_str)
-			plt.legend(loc='upper left',fontsize=8)
+			plt.legend(loc='upper left', fontsize=8)
 
-			plt.subplot(3,1,2)
+			plt.subplot(3, 1, 2)
 			
-			plt.plot(np.arange(len(maxActive)) , numActive , color = 'blue', linewidth = 5, label = 'Number Active Aircraft ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , numAMA , color = 'red', linewidth = 5, label = 'Number Active in AMA ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , numPlanned , color = 'orange', linewidth = 2, alpha = alphaVal, label = 'Number in Planned Group ' + runwayVec[rwy])
-			plt.plot(np.arange(len(maxActive)) , numReady , color = 'green', linewidth = 2,alpha = alphaVal, label = 'Number in Ready Group ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), numActive, color='blue', linewidth=5, label='Number Active Aircraft ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), numAMA, color='red', linewidth=5, label='Number Active in AMA ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), numPlanned, color='orange', linewidth=2, alpha=alphaVal, label='Number in Planned Group ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), numReady, color='green', linewidth=2, alpha=alphaVal, label='Number in Ready Group ' + runwayVec[rwy])
 
-			plt.legend(loc='upper left',fontsize=8)
+			plt.legend(loc='upper left', fontsize=8)
 
-			plt.subplot(3,1,3)
+			plt.subplot(3, 1, 3)
 			ax = plt.gca()
-			plt.plot(np.arange(len(maxActive)) , np.zeros(len(maxActive)) , '-', color = 'black',label='0 Compliance')
-			plt.plot(np.arange(len(maxActive)) , np.full(len(maxActive),-2,dtype=float) , '--', color = 'black',label='-2 Compliance')
+			plt.plot(np.arange(len(maxActive)), np.zeros(len(maxActive)), '-', color='black', label='0 Compliance')
+			plt.plot(np.arange(len(maxActive)), np.full(len(maxActive), -2, dtype=float), '--', color='black', label='-2 Compliance')
 
 			idS+=1
 			df_summary.loc[idS,'date'] = targetdate_str
@@ -335,9 +349,10 @@ def analyze_queue(targetdate, banknum):
 			df_summary.loc[idS,'target'] = targetSt
 			df_summary.loc[idS,'target_timestamp'] = targetTimeSt
 
-			uniqueState = ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE','RUNWAY_SWITCH',\
-			'PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN','GA PUSHBACK_UNCERTAIN','GA PUSHBACK_PLANNED',\
-			'GA PUSHBACK_READY', 'GA APREQ_DEPARTURE' , 'GA EDCT_DEPARTURE' , 'GA EXEMPT_DEPARTURE']
+			uniqueState = ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE','RUNWAY_SWITCH',
+					'PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN',
+					'GA PUSHBACK_UNCERTAIN','GA PUSHBACK_PLANNED', 'GA PUSHBACK_READY', 
+					'GA APREQ_DEPARTURE' , 'GA EDCT_DEPARTURE' , 'GA EXEMPT_DEPARTURE']
 
 			all_compliance = []
 			count_bad_compliance_5 = 0
@@ -356,13 +371,12 @@ def analyze_queue(targetdate, banknum):
 								if all_compliance[-1] < -5:
 									count_bad_compliance_5 +=1
 
-				# TODO: set color and state, so the plot color is not randomly ordered every time
-				if len(xPlot)>0:
-					plt.plot(xPlot,yPlot,'*',markersize=7,color = colStr,label=labelSt)
+				if len(xPlot) > 0:
+					plt.plot(xPlot, yPlot, '*', markersize=7, color = colStr, label=labelSt)
 
 			# print(all_compliance)
 			# print(len(all_compliance))
-			if len(all_compliance)>0:
+			if len(all_compliance) > 0:
 				df_summary.loc[idS,'average_compliance'] = np.mean(all_compliance)
 			else:
 				df_summary.loc[idS,'average_compliance'] = 0
@@ -393,14 +407,13 @@ def run(start_date, number_of_days, bank):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('startdate', help = 'Start date of analysis (YYYYMMDD)')
+	parser.add_argument('startdate', help='Start date of analysis (YYYYMMDD)')
 	parser.add_argument('-d', '--days', help='Number of days to run analysis, default 1', 
-			type = int, default = 1)
+			type=int, default=1)
 	parser.add_argument('-b', '--bank', help='Bank number to run analysis on, default 2', 
-			type = int, default = 2)
+			type=int, default=2)
 
-	args = parser.parse_args()
-    
+	args = parser.parse_args()  
 	start_date = dt.datetime.strptime(args.startdate, '%Y%m%d').date()
 
 	run(start_date, args.days, args.bank)

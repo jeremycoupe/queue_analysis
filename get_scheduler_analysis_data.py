@@ -59,7 +59,6 @@ def run(start_date, number_of_days, bank):
 	conn = psycopg2.connect(dbname=DBNAME, user=DBUSER, password=DBPW, host=DBHOST, port=DBPORT)
 	for day in range(number_of_days):
 		day_start = start_date + dt.timedelta(days = day)
-		#targetout = 'data/{}/bank{}'.format(day_start.strftime('%Y/%m/%d'), bank) # TODO use os.path.join
 		targetout = os.path.join('data','{:d}'.format(day_start.year), '{:02d}'.format(day_start.month), '{:02d}'.format(day_start.day), 'bank{}'.format(bank))
 		if not os.path.exists(targetout):
 			os.makedirs(targetout)
@@ -69,11 +68,11 @@ def run(start_date, number_of_days, bank):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('startdate', help = 'Start date of analysis (YYYYMMDD)')
+	parser.add_argument('startdate', help='Start date of analysis (YYYYMMDD)')
 	parser.add_argument('-d', '--days', help='Number of days to run analysis, default 1', 
-			type = int, default = 1)
+			type=int, default=1)
 	parser.add_argument('-b', '--bank', help='Bank number to run analysis on, default 2', 
-			type = int, default = 2)
+			type=int, default=2)
 
 	args = parser.parse_args()
     
