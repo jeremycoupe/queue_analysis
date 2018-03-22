@@ -5,17 +5,18 @@ import pandas.io.sql as psql
 import matplotlib.pyplot as plt
 import argparse
 import datetime as dt
+import os
 
 randomColors = np.load('randomColors.npy')
 alphaVal = 0.6
 
 
-def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is int
+def analyze_queue(targetdate, banknum):
 	totalNumberFlutter = 0
-	targetdate_dir = targetdate.strftime('%Y/%m/%d')
 	targetdate_str = targetdate.strftime('%Y-%m-%d')
 	print('Processing {}'.format(targetdate_str))
-	df = pd.read_csv('data/{0}/bank{1}/scheduler_analysis_data_{2}_bank{1}.csv'.format(targetdate_dir, banknum, targetdate_str))
+	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
+	df = pd.read_csv(os.path.join(targetout, 'scheduler_analysis_data_{}_bank{}.csv'.format(targetdate_str, banknum)))
 
 	df = df[ (df['general_stream'] == 'DEPARTURE') ]
 	runwayVec = df['runway'].unique()
@@ -24,7 +25,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 	metered = True
 	try:
 		#dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
-		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF)  , sep=',' , index_col=False)
+		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF), sep=',', index_col=False)
 		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
 	except:
 		try:
@@ -32,7 +33,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 		except:
 			metered = False
 
-	cols0 = ['date','runway','baloon_metric','target','target_timestamp','max_ama_count','max_active_count','average_compliance','count_non_compliant_5',\
+	cols0 = ['date','runway','balloon_metric','target','target_timestamp','max_ama_count','max_active_count','average_compliance','count_non_compliant_5',\
 	'meter_switch_on_off','meter_on','meter_off','count_apreq','count_edct','count_exempt','count_runway_switch',\
 	'count_planned' , 'count_ready' , 'count_uncertain','count_ga_uncertain','count_ga_apreq',\
 	'count_ga_edct']
@@ -46,7 +47,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 		
 		if len(dfCurrentRunway)>0:
 			dfCurrentRunway = dfCurrentRunway.sort_values(by=['msg_time','runway_sta'])
-			dfCurrentRunway.to_csv('data/{0}/bank{1}/scheduler_analysis_debug_{2}_bank{1}_{3}.csv'.format(targetdate_dir, banknum, targetdate_str, runwayVec[rwy]))
+			dfCurrentRunway.to_csv(os.path.join(targetout, 'scheduler_analysis_debug_{}_bank{}_{}.csv'.format(targetdate_str, banknum, runwayVec[rwy])))
 
 			activeVec = []
 
@@ -127,17 +128,17 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 				if meterModeVec[ts] == 1:
 					if runwayVec[rwy] in stRunway:
 						meterVec[ts] = 1
-		
+
 				for flight in range(len(dfActiveALL['flight_key'])):
 					if dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] not in activeVec:
 						activeVec.append(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
 						if metered:
 							if meterVec[ts] == 1:
 								idx+=1
-	
+
 								dfLastSchedule = dfCurrentRunway[ (dfCurrentRunway['msg_time'] == etaMsgVec[ts-1] ) \
 								& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] )]
-															
+
 								if len(dfLastSchedule) > 0:
 									lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
 									lastPriority = dfLastSchedule.loc[dfLastSchedule.index[0],'schedule_priority']
@@ -165,10 +166,11 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 											df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
 											df_compliance.loc[idx,'ts'] = ts
-											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]											
+											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 											###########
 											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-											& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]																			
+											& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] )]
+
 											if len(lastTOBT) > 0:
 												apreqCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
 												pd.Timestamp(lastTOBT.loc[lastTOBT.index[ 0 ],'gate_sta']) ).total_seconds() / float(60)
@@ -177,7 +179,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 												# print(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
 												# print('APREQ COMPLIANCE')
 												# print(apreqCompliance)
-												# print('\n')											
+												# print('\n')
 												df_compliance.loc[idx,'compliance'] = apreqCompliance
 											#########
 											df_compliance.loc[idx,'previous_state'] = lastPriority
@@ -189,7 +191,8 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 											df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 											#######
 											lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-											& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]																			
+											& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]
+
 											if len(lastTOBT) > 0:
 												exemptCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
 												pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta']) ).total_seconds() / float(60)
@@ -205,7 +208,8 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 										df_compliance.loc[idx,'msg_time'] = etaMsgVec[ts]
 										#######
 										lastTOBT = df[ (df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) \
-										& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] ) ]																			
+										& (df['gate_sta'].notnull() ) & (df['msg_time'] == etaMsgVec[ts-1] )] 
+
 										if len(lastTOBT) > 0:
 											gaCompliance = pd.Timedelta( pd.Timestamp(etaMsgVec[ts]) - \
 											pd.Timestamp(lastTOBT.loc[lastTOBT.index[0],'gate_sta']) ).total_seconds() / float(60)
@@ -215,7 +219,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 											df_compliance.loc[idx,'previous_state'] = 'GA ' + lastState
 										if lastPriority in ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE']:
 											df_compliance.loc[idx,'previous_state'] = 'GA ' + lastPriority
-								
+
 								else:
 									if ts > 0:
 										# print('LOOK INTO THIS POSSIBLE RUNWAY SWITCH')
@@ -244,8 +248,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 										# 		'etaMsgTime':etaMsgVec[ts]}, index=[0]))
 										# 	print(debug_except_notRwySw)
 										# print('\n')
-				
-	
+
 			timeOn = ''
 			timeOff = ''
 
@@ -265,7 +268,6 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 				totalNumberFlutter +=1
 
 			#print(meterVec)
-			
 			plt.subplot(3,1,1)
 			plt.plot(np.arange(len(maxActive)) , maxActive / float(60) , color = 'blue', linewidth = 5, label = 'Max Active Delay Runway ' + runwayVec[rwy])
 			plt.plot(np.arange(len(maxActive)) , maxPlanned / float(60), color = 'orange', linewidth = 2, alpha = alphaVal, label = 'Max Planning Delay Runway ' + runwayVec[rwy])
@@ -276,7 +278,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 			#plt.plot(np.arange(len(maxActive)) , maxUncertain / float(60) , label = 'Max Uncertain Delay Runway ' + runwayVec[rwy])
 			# plt.plot(np.arange(len(maxActive)) , meanPlannedDelay / float(60) , color = 'm',  alpha = 0.5, label = 'Mean Planned Delay Runway ' + runway)
 			# plt.plot(np.arange(len(maxActive)) , minPlannedDelay / float(60) , color = 'r' , alpha = 0.5, label = 'Min Planned Delay Runway ' + runway)	
-		
+
 			plt.plot(np.arange(len(maxActive)) , upperBoundVec , '--', color = 'grey' , alpha = 0.6, linewidth = 3, label = str(upperBoundVec[-1]) + ' Minute Upper Threshold')
 			plt.plot(np.arange(len(maxActive)) , targetVec , color = 'black' ,alpha = 0.6, linewidth = 3, label = str(targetVec[-1]) + ' Minute Target Queue')
 			plt.plot(np.arange(len(maxActive)) , lowerBoundVec , color = 'grey' ,alpha = 0.6, linewidth = 3, label = str(lowerBoundVec[-1]) + ' Minute Lower Threshold')
@@ -293,7 +295,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 			plt.plot(np.arange(len(maxActive)) , numPlanned , color = 'orange', linewidth = 2, alpha = alphaVal, label = 'Number in Planned Group ' + runwayVec[rwy])
 			plt.plot(np.arange(len(maxActive)) , numReady , color = 'green', linewidth = 2,alpha = alphaVal, label = 'Number in Ready Group ' + runwayVec[rwy])
 
-			plt.legend(loc='upper left',fontsize=8)		
+			plt.legend(loc='upper left',fontsize=8)
 
 			plt.subplot(3,1,3)
 			ax = plt.gca()
@@ -306,7 +308,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 			df_summary.loc[idS,'meter_switch_on_off'] = numSwitch
 			df_summary.loc[idS,'meter_on'] = timeOn
 			df_summary.loc[idS,'meter_off'] = timeOff
-			df_summary.loc[idS,'baloon_metric'] = np.sum(balloonMetricVec)
+			df_summary.loc[idS,'balloon_metric'] = np.sum(balloonMetricVec)
 			df_summary.loc[idS,'max_ama_count'] = max(numAMA)
 			df_summary.loc[idS,'max_active_count'] = max(numActive)
 			df_summary.loc[idS,'count_apreq'] = len(df_compliance[df_compliance['previous_state'] == 'APREQ_DEPARTURE'])
@@ -332,9 +334,6 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 
 			df_summary.loc[idS,'target'] = targetSt
 			df_summary.loc[idS,'target_timestamp'] = targetTimeSt
-
-
-
 
 			uniqueState = ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE','RUNWAY_SWITCH',\
 			'PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN','GA PUSHBACK_UNCERTAIN','GA PUSHBACK_PLANNED',\
@@ -369,12 +368,12 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 				df_summary.loc[idS,'average_compliance'] = 0
 			df_summary.loc[idS,'count_non_compliant_5'] = count_bad_compliance_5
 
-			df_compliance.to_csv('data/{0}/bank{1}/compliance_{2}_bank{1}_{3}.csv'.format(targetdate_dir, banknum, targetdate_str, runwayVec[rwy]))
-			
+			df_compliance.to_csv(os.path.join(targetout, 'compliance_{}_bank{}_{}.csv'.format(targetdate_str, banknum, runwayVec[rwy])))
+
 			plt.legend(loc='lower left',fontsize=8)
 
 			plt.tight_layout()
-			plt.savefig('data/{0}/bank{1}/delay_fig_{2}_bank{1}_{3}.png'.format(targetdate_dir, banknum, targetdate_str, runwayVec[rwy]))
+			plt.savefig(os.path.join(targetout, 'delay_fig_{}_bank{}_{}.png'.format(targetdate_str, banknum, runwayVec[rwy])))
 			plt.close('all')
 	#plt.show()
 
@@ -382,7 +381,7 @@ def analyze_queue(targetdate, banknum):# targetdate is datetime.date(), bank is 
 	# print('\n')
 	# debug_except_notRwySw.to_csv('debug_except_notRwySw_{}_bank{}_{}.txt'.format(targetdate_str, banknum, runwayVec[rwy]))
 
-	df_summary.to_csv('data/{0}/bank{1}/summary_{2}_bank{1}.csv'.format(targetdate_dir, banknum, targetdate_str))
+	df_summary.to_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(targetdate_str, banknum)))
 	print('Total Number of Fluttering = ' + str(totalNumberFlutter))
 
 
@@ -405,6 +404,3 @@ if __name__ == '__main__':
 	start_date = dt.datetime.strptime(args.startdate, '%Y%m%d').date()
 
 	run(start_date, args.days, args.bank)
-
-
-

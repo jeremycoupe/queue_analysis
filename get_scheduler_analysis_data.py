@@ -50,8 +50,8 @@ def fGetData(targetdate, banknum, conn):
 	'''%(time1,time2)
 
 	df = psql.read_sql(q, conn)
-
-	df.to_csv('data/{0}/bank{1}/scheduler_analysis_data_{2}_bank{1}.csv'.format(targetdate.strftime('%Y/%m/%d'), banknum, dayVar))
+	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
+	df.to_csv(os.path.join(targetout, 'scheduler_analysis_data_{}_bank{}.csv'.format(dayVar, banknum)))
 
 
 def run(start_date, number_of_days, bank):
@@ -59,7 +59,8 @@ def run(start_date, number_of_days, bank):
 	conn = psycopg2.connect(dbname=DBNAME, user=DBUSER, password=DBPW, host=DBHOST, port=DBPORT)
 	for day in range(number_of_days):
 		day_start = start_date + dt.timedelta(days = day)
-		targetout = 'data/{}/bank{}'.format(day_start.strftime('%Y/%m/%d'), bank)
+		#targetout = 'data/{}/bank{}'.format(day_start.strftime('%Y/%m/%d'), bank) # TODO use os.path.join
+		targetout = os.path.join('data','{:d}'.format(day_start.year), '{:02d}'.format(day_start.month), '{:02d}'.format(day_start.day), 'bank{}'.format(bank))
 		if not os.path.exists(targetout):
 			os.makedirs(targetout)
 		fGetData(day_start, bank, conn)
@@ -79,5 +80,3 @@ if __name__ == '__main__':
 	start_date = dt.datetime.strptime(args.startdate, '%Y%m%d').date()
 
 	run(start_date, args.days, args.bank)
-
-
