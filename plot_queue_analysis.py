@@ -143,8 +143,12 @@ def analyze_queue(targetdate, banknum):
 							if meterVec[ts] == 1:
 								idx+=1
 
-								dfLastSchedule = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts-1]) 
-												& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])]
+								if ts > 0:
+									dfLastSchedule = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts-1]) 
+													& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])]
+
+								else:
+									dfLastSchedule = []
 
 								if len(dfLastSchedule) > 0:
 									lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
