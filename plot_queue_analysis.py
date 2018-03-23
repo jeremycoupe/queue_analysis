@@ -46,15 +46,15 @@ def analyze_queue(targetdate, banknum):
 	debug_except_notRwySw = pd.DataFrame()
 	for rwy in range(len(runwayVec)):
 	# TODO: instead of filter by TIME_BASED_METERING, use bank start and end
-		dfCurrentRunway = df[ (df['runway'] == runwayVec[rwy]) & (df['general_stream'] == 'DEPARTURE') ]
+		dfCurrentRunway = df[(df['runway'] == runwayVec[rwy]) & (df['general_stream'] == 'DEPARTURE')]
 		
-		if len(dfCurrentRunway)>0:
+		if len(dfCurrentRunway) > 0:
 			dfCurrentRunway = dfCurrentRunway.sort_values(by=['msg_time','runway_sta'])
 			dfCurrentRunway.to_csv(os.path.join(targetout, 'scheduler_analysis_debug_{}_bank{}_{}.csv'.format(targetdate_str, banknum, runwayVec[rwy])))
 
 			activeVec = []
 
-			cols = ['gufi','runway','ts','msg_time','compliance','previous_state']
+			cols = ['gufi', 'runway', 'ts', 'msg_time', 'compliance', 'previous_state']
 
 			df_compliance = pd.DataFrame(np.empty((1,len(cols)), dtype=object),columns=cols)
 			idx = -1
@@ -142,11 +142,9 @@ def analyze_queue(targetdate, banknum):
 						if metered:
 							if meterVec[ts] == 1:
 								idx+=1
-
 								if ts > 0:
 									dfLastSchedule = dfCurrentRunway[(dfCurrentRunway['msg_time'] == etaMsgVec[ts-1]) 
 													& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])]
-
 								else:
 									dfLastSchedule = []
 
