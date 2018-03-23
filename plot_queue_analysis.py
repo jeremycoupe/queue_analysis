@@ -341,12 +341,12 @@ def analyze_queue(targetdate, banknum):
 			# df_summary.loc[idS,'target'] = targetVec[0]
 			# df_summary.loc[idS,'target_timestamp'] = etaMsgVec[0]
 			targetSt = str(targetVec[0])
-			targetTimeSt = etaMsgVec[0]
+			targetTimeSt = str(etaMsgVec[0]).split('+')[0]
 
 			for v in range(1,len(targetVec)):
 				if targetVec[v] != targetVec[v-1]:
 					targetSt = targetSt + '--' + str(targetVec[v])
-					targetTimeSt = targetTimeSt + '--' + etaMsgVec[v]
+					targetTimeSt = targetTimeSt + '--' + str(etaMsgVec[v]).split('+')[0]
 
 			df_summary.loc[idS,'target'] = targetSt
 			df_summary.loc[idS,'target_timestamp'] = targetTimeSt
