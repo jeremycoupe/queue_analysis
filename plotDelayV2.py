@@ -3,18 +3,21 @@ import pandas as pd
 import psycopg2
 import pandas.io.sql as psql
 import matplotlib.pyplot as plt
+import argparse
+import datetime as dt
+import os
 
-randomColors = np.load('/home/milin/analysis/queue_analysis/randomColors.npy')
+randomColors = np.load('randomColors.npy')
 
 # TODO: make this work for new scheduler tables
 
-bank2 = True
-bank3 = False
+#bank2 = True
+#bank3 = False
 
 
 alphaVal = 0.6
 
-dateVec = []
+#dateVec = []
 
 #daySt = '2018-02-'
 
@@ -32,54 +35,68 @@ dateVec = []
 # 		dateVec.append(daySt + str(i))
 
 
-daySt = '2017-12-'
-for i in range(3,32):
-	if i < 10:
-		dateVec.append(daySt + '0' + str(i))
-	else:
-		dateVec.append(daySt + str(i))
 
-totalNumberFlutter = 0
-debug_except_notRwySw = pd.DataFrame()
-for date in range(len(dateVec)):
-	print(dateVec[date])
-	if bank2:
-		file = 'data/bank2/bank2_all_data_' + dateVec[date] + '.csv'
-	if bank3:
-		file = 'data/bank3/bank3_all_data_' + dateVec[date] + '.csv'
+
+#daySt = '2017-12-'
+#for i in range(3,32):
+#	if i < 10:
+#		dateVec.append(daySt + '0' + str(i))
+#	else:
+#		dateVec.append(daySt + str(i))
+
+
+def analyze_queue(targetdate, banknum):
+	totalNumberFlutter = 0
+	targetdate_str = targetdate.strftime('%Y-%m-%d')
+	print('Processing {}'.format(targetdate_str))
+	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
+	df = pd.read_csv(os.path.join(targetout, 'scheduler_analysis_data_{}_bank{}.csv'.format(targetdate_str, banknum)))
+
+
+#totalNumberFlutter = 0
+	debug_except_notRwySw = pd.DataFrame()
+#for date in range(len(dateVec)):
+#	print(dateVec[date])
+#	if bank2:
+#		file = 'data/bank2/bank2_all_data_' + dateVec[date] + '.csv'
+#	if bank3:
+#		file = 'data/bank3/bank3_all_data_' + dateVec[date] + '.csv'
 	
-	df = pd.read_csv(file)
+#	df = pd.read_csv(file)
 
 	df = df[ (df['general_stream'] == 'DEPARTURE') ]
 	runwayVec = df['runway'].unique()
 
-	stMF = dateVec[date].replace('-','')
+	stMF = targetdate.strftime('%Y%m%d')
 	metered = True
 	try:
 		#dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
-		dfMF = pd.read_csv('/home/milin/analysis/queue_analysis/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
+		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF), sep=',', index_col=False)
 		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
 	except:
+		print('metered flights output not found')
 		try:
-			dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_'+ dateVec[date] + '.csv'  , sep=',' , index_col=False)
+			dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_'+ targetdate_str + '.csv' , sep=',', index_col=False)
 		except:
 			metered = False
 
-	cols0 = ['date','runway','baloon_metric','average_compliance','count_non_compliant_5',\
-	'meter_switch_on_off','meter_on','meter_off','count_apreq','count_edct','count_exempt','count_runway_switch',\
-	'count_planned' , 'count_ready' , 'count_uncertain','count_ga_uncertain','count_ga_apreq',\
-	'count_ga_edct']
+	cols0 = ['date', 'runway', 'balloon_metric', 'target', 'target_timestamp', 
+		'max_ama_count', 'max_active_count', 'average_compliance', 'count_non_compliant_5', 
+		'meter_switch_on_off', 'meter_on', 'meter_off', 
+		'count_apreq', 'count_edct', 'count_exempt', 'count_runway_switch',
+		'count_planned', 'count_ready', 'count_uncertain', 
+		'count_ga_uncertain', 'count_ga_apreq', 'count_ga_edct']
 	df_summary = pd.DataFrame(np.empty((1,len(cols0)), dtype=object),columns=cols0)
 	idS = -1
 
 	for rwy in range(len(runwayVec)):
-# TODO: instead of filter by TIME_BASED_METERING, use bank start and end
+	# TODO: instead of filter by TIME_BASED_METERING, use bank start and end
 		dfCurrentRunway = df[ (df['metering_mode'] == 'TIME_BASED_METERING') & (df['runway'] == runwayVec[rwy]) \
 		& (df['fix'] == df['runway']) & (df['general_stream'] == 'DEPARTURE') ]
 		
 		if len(dfCurrentRunway)>0:
 			dfCurrentRunway = dfCurrentRunway.sort_values(by=['eta_msg_time','scheduled_time'])
-			dfCurrentRunway.to_csv('data/bank2/debug/debug'+runwayVec[rwy]+dateVec[date]+'.csv')
+			dfCurrentRunway.to_csv(os.path.join(targetout, 'scheduler_analysis_debug_{}_bank{}_{}.csv'.format(targetdate_str, banknum, runwayVec[rwy])))
 
 			activeVec = []
 
@@ -173,7 +190,7 @@ for date in range(len(dateVec)):
 									lastGate = dfLastSchedule.loc[dfLastSchedule.index[0],'gate']
 									
 
-# TODO make identification of GAs more robust
+									# TODO make identification of GAs more robust
 									if 'GA' not in lastGate:
 										if lastState in ['PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN']:
 											df_compliance.loc[idx,'runway'] = runwayVec[rwy]
@@ -293,7 +310,7 @@ for date in range(len(dateVec)):
 					timeOff = timeOff + '--' + etaMsgVec[k]
 
 			if numSwitch > 2:
-				print(dateVec[date]  + ' ' + runwayVec[rwy] +  ' METERING FLUTTERED ON/OFF')
+				print(targetdate_str  + ' ' + runwayVec[rwy] +  ' METERING FLUTTERED ON/OFF')
 				totalNumberFlutter +=1
 
 			#print(meterVec)
@@ -314,7 +331,7 @@ for date in range(len(dateVec)):
 
 			plt.ylabel('max(TTOT - UTOT) [Minutes]')
 			plt.xticks(np.arange(0,len(etaMsgVec),90),displayEta,rotation=45,fontsize = 8)
-			plt.title('Runway ' + runwayVec[rwy] + ' Delay ' + dateVec[date])
+			plt.title('Runway ' + runwayVec[rwy] + ' Delay ' + targetdate_str)
 			plt.legend()
 
 			plt.subplot(3,1,2)
@@ -332,12 +349,12 @@ for date in range(len(dateVec)):
 			plt.plot(np.arange(len(maxActive)) , np.full(len(maxActive),-2,dtype=float) , '--', color = 'black')
 
 			idS+=1
-			df_summary.loc[idS,'date'] = dateVec[date]
+			df_summary.loc[idS,'date'] = targetdate_str
 			df_summary.loc[idS,'runway'] = runwayVec[rwy]
 			df_summary.loc[idS,'meter_switch_on_off'] = numSwitch
 			df_summary.loc[idS,'meter_on'] = timeOn
 			df_summary.loc[idS,'meter_off'] = timeOff
-			df_summary.loc[idS,'baloon_metric'] = np.sum(balloonMetricVec)
+			df_summary.loc[idS,'balloon_metric'] = np.sum(balloonMetricVec)
 			df_summary.loc[idS,'count_apreq'] = len(df_compliance[df_compliance['previous_state'] == 'APREQ_DEPARTURE'])
 			df_summary.loc[idS,'count_edct'] = len(df_compliance[df_compliance['previous_state'] == 'EDCT_DEPARTURE'])
 			df_summary.loc[idS,'count_exempt'] = len(df_compliance[df_compliance['previous_state'] == 'EXEMPT_DEPARTURE'])
@@ -370,7 +387,7 @@ for date in range(len(dateVec)):
 								if all_compliance[-1] < -5:
 									count_bad_compliance_5 +=1
 
-# TODO: set color and state, so the plot color is not randomly ordered every time
+				# TODO: set color and state, so the plot color is not randomly ordered every time
 				if len(xPlot)>0:
 					plt.plot(xPlot,yPlot,'*',markersize=7,color = colStr,label=labelSt)
 
@@ -382,24 +399,45 @@ for date in range(len(dateVec)):
 				df_summary.loc[idS,'average_compliance'] = 0
 			df_summary.loc[idS,'count_non_compliant_5'] = count_bad_compliance_5
 
-			df_compliance.to_csv('data/bank2/compliance/compliance_' +runwayVec[rwy] + '_' + dateVec[date] + '.csv')
+			df_compliance.to_csv(os.path.join(targetout, 'compliance_{}_bank{}_{}.csv'.format(targetdate_str, banknum, runwayVec[rwy])))
 			
 			plt.legend()
 
 			plt.tight_layout()
-			if bank2:
-				plt.savefig('figs/bank2/' + runwayVec[rwy] + '_' + dateVec[date] + '_bank2_delay_figV3.png')
-			if bank3:
-				plt.savefig('figs/bank3/' + runwayVec[rwy] + '_' + dateVec[date] + '_bank3_delay_figV3.png')
+			plt.savefig(os.path.join(targetout, 'delay_fig_{}_bank{}_{}.png'.format(targetdate_str, banknum, runwayVec[rwy])))
 
 			plt.close('all')
 	#plt.show()
 
 
-	df_summary.to_csv('data/bank2/summary/summary_' + dateVec[date] + '.csv')
-print('Total Number of Fluttering = ' + str(totalNumberFlutter))
-print('writing except not-rwy-switches to file')
-logbankNum = 2
-if bank3:
-	logbankNum = 3
-debug_except_notRwySw.to_csv('debug_except_notRwySw_{}bank{}.csv'.format(daySt, logbankNum))
+	df_summary.to_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(targetdate_str, banknum)))
+	print('Total Number of Fluttering = ' + str(totalNumberFlutter))
+	#print('writing except not-rwy-switches to file')
+#logbankNum = 2
+#if bank3:
+#	logbankNum = 3
+	#debug_except_notRwySw.to_csv('debug_except_notRwySw_{}_bank{}_{}.txt'.format(targetdate_str, banknum, runwayVec[rwy]))
+
+
+
+
+def run(start_date, number_of_days, bank):
+	for day in range(number_of_days):
+		day_start = start_date + dt.timedelta(days = day)
+		analyze_queue(day_start, bank)
+
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('startdate', help='Start date of analysis (YYYYMMDD)')
+	parser.add_argument('-d', '--days', help='Number of days to run analysis, default 1', 
+			type=int, default=1)
+	parser.add_argument('-b', '--bank', help='Bank number to run analysis on, default 2', 
+			type=int, default=2)
+
+	args = parser.parse_args()  
+	start_date = dt.datetime.strptime(args.startdate, '%Y%m%d').date()
+
+	run(start_date, args.days, args.bank)
+
+
