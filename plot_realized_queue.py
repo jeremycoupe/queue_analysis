@@ -7,9 +7,11 @@ import argparse
 import datetime as dt
 import sys
 import fnmatch
+import re
 
 
 reportsdir = '/home/atd2data/reports/summary'
+minversion = 0.6
 
 cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', 'Ramp Excess Taxi', 'AMA Excess Taxi', 'AMA model', 'predictedDelay', 'controlled', 'Gate Hold']
 runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
@@ -18,17 +20,34 @@ def plot_queue(targetdate, banknum):
 	dateVar = targetdate.strftime('%Y-%m-%d')
 	targetdir = os.path.join(reportsdir, '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day))
 	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
-	try:
-		for f in os.listdir(targetdir):
-#			if fnmatch.fnmatch(f, '*fullFlightSummary.v*'): # what happens if there are multiple versions? which one does it use? needs at least v0.6 or higher
-			if fnmatch.fnmatch(f, '*fullFlightSummary.v0.6*'): # hardcode for now to generate files
-				targetfile = f
-		dfSummary = pd.read_csv(os.path.join(targetdir, targetfile), sep=',',index_col=False)
-	except:
-		print('file at {} does not exist'.format(os.path.join(targetdir, targetfile)))
-		sys.exit()
-	df_queue = pd.read_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(dateVar, banknum)), sep=',',index_col=False)
 
+	# Load flightSummary, if able
+	ffs_all = fnmatch.filter(os.listdir(targetdir), '*fullFlightSummary*')
+	ffs_AAL = fnmatch.filter(os.listdir(targetdir), '*fullFlightSummary_AAL*')
+	ffs = set(ffs_all) - set(ffs_AAL)
+	if not ffs:
+		print('No fullFlightSummary files found. Exiting')
+		sys.exit()
+	versions = []
+	for f in ffs:
+		ver = re.compile('v\d+.\d+').findall(f)
+		if len(ver) > 0:	
+			vernum = float(ver[0].strip('v'))
+			versions.append(vernum)
+	if not versions:
+		print('Version number for fullFlightSummary files not found; file to load is ambiguous. Exiting')
+		sys.exit()
+	latestver = max(versions)
+	# check version >= 0.6
+	if latestver < minversion:
+		print('fullFlightSummary version {} is less than {}. Exiting'.format(latestver, minversion))
+		sys.exit()
+	for f in ffs:
+		if fnmatch.fnmatch(f, '*fullFlightSummary.v{}*'.format(latestver)): 
+			targetfile = f
+	dfSummary = pd.read_csv(os.path.join(targetdir, targetfile), sep=',',index_col=False)
+
+	df_queue = pd.read_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(dateVar, banknum)), sep=',',index_col=False)
 
 	print(dateVar)
 	
