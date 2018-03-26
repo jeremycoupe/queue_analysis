@@ -35,7 +35,7 @@ def fGetData(targetdate, banknum, conn):
 			print(time1)
 
 	q = '''SELECT
-	flight_key, general_stream, msg_time, flight_status,schedule_priority, model_schedule_state,
+	flight_key, general_stream, msg_time, flight_status, schedule_priority, model_schedule_state,
 	gate, gate_eta, gate_sta, spot, spot_eta, spot_sta,
 	runway, runway_eta, runway_sta, (runway_sta - runway_eta) as ttot_minus_utot,
 	metering_mode, metering_display, target_queue_buffer, metering_display_entry_offset, metering_display_exit_offset
