@@ -18,6 +18,7 @@ runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
 
 def plot_queue(targetdate, banknum):
 	dateVar = targetdate.strftime('%Y-%m-%d')
+	print(dateVar)
 	targetdir = os.path.join(reportsdir, '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day))
 	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
 
@@ -26,8 +27,8 @@ def plot_queue(targetdate, banknum):
 	ffs_AAL = fnmatch.filter(os.listdir(targetdir), '*fullFlightSummary_AAL*')
 	ffs = set(ffs_all) - set(ffs_AAL)
 	if not ffs:
-		print('No fullFlightSummary files found. Exiting')
-		sys.exit()
+		print('No fullFlightSummary files found. Skipping day...')
+		return
 	versions = []
 	for f in ffs:
 		ver = re.compile('v\d+.\d+').findall(f)
@@ -35,13 +36,13 @@ def plot_queue(targetdate, banknum):
 			vernum = float(ver[0].strip('v'))
 			versions.append(vernum)
 	if not versions:
-		print('Version number for fullFlightSummary files not found; file to load is ambiguous. Exiting')
-		sys.exit()
+		print('Version number for fullFlightSummary files not found; file to load is ambiguous. Skipping day...')
+		return
 	latestver = max(versions)
 	# check version >= 0.6
 	if latestver < minversion:
-		print('fullFlightSummary version {} is less than {}. Exiting'.format(latestver, minversion))
-		sys.exit()
+		print('fullFlightSummary version {} is less than {}. Skipping day...'.format(latestver, minversion))
+		return
 	for f in ffs:
 		if fnmatch.fnmatch(f, '*fullFlightSummary.v{}*'.format(latestver)): 
 			targetfile = f
@@ -49,8 +50,6 @@ def plot_queue(targetdate, banknum):
 
 	df_queue = pd.read_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(dateVar, banknum)), sep=',',index_col=False)
 
-	print(dateVar)
-	
 	idx = -1
 	dfPlot = pd.DataFrame(np.empty((1, len(cols)), dtype=object), columns=cols)
 	for flight in range(len(dfSummary['gufi'])):
