@@ -20,7 +20,6 @@ runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
 def plot_queue(targetdate, banknum):
 	print(targetdate)
 	dateVar = targetdate.strftime('%Y-%m-%d')
-	print(dateVar)
 	targetdir = os.path.join(reportsdir, '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day))
 	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
 
@@ -61,7 +60,8 @@ def plot_queue(targetdate, banknum):
 		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF), sep=',', index_col=False)
 		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
 	except:
-		print('metered flights output not found')
+		print('Metered flights output not found')
+		dfMF = pd.DataFrame({'gufi':''},index=[0])
 		metered = False
 
 	#####################
@@ -97,8 +97,8 @@ def plot_queue(targetdate, banknum):
 				if dfSummary.loc[flight, 'hold_indicator'] == True:
 					dfPlot.loc[idx, 'Gate Hold'] = dfSummary.loc[flight, 'actual_gate_hold']
 
-
-				dfCompliance = dfMF[ dfMF['gufi'] == dfSummary.loc[dfSummary.index[flight],'gufi']]
+				#dfCompliance = dfMF[dfMF['gufi'] == dfSummary.loc[dfSummary.index[flight], 'gufi']] # isn't this index redundant? flight is already an index 
+				dfCompliance = dfMF[dfMF['gufi'] == dfSummary.loc[flight, 'gufi']]
 				if len(dfCompliance['gufi']) > 0:
 					
 					compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) 
