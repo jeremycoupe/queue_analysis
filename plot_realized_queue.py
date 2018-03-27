@@ -10,13 +10,16 @@ import fnmatch
 import re
 
 
-reportsdir = '/home/atd2data/reports/summary'
+#reportsdir = '/home/atd2data/reports/summary'
+reportsdir = '/Users/wcoupe/Documents/summary'
 minversion = 0.6
 
-cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', 'Ramp Excess Taxi', 'AMA Excess Taxi', 'AMA model', 'predictedDelay', 'controlled', 'Gate Hold']
+cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', \
+'Ramp Excess Taxi', 'AMA Excess Taxi', 'AMA model', 'predictedDelay', 'apreq','edct', 'Gate Hold', 'Compliance']
 runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
 
 def plot_queue(targetdate, banknum):
+	print(targetdate)
 	dateVar = targetdate.strftime('%Y-%m-%d')
 	targetdir = os.path.join(reportsdir, '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day))
 	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
@@ -49,7 +52,19 @@ def plot_queue(targetdate, banknum):
 
 	df_queue = pd.read_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(dateVar, banknum)), sep=',',index_col=False)
 
-	print(dateVar)
+	#####################
+
+	stMF = targetdate.strftime('%Y%m%d')
+	metered = True
+	try:
+		#dfMF = pd.read_csv('~/Documents/meteredFlights/metered_flights_' + stMF + '.csv'  , sep=',' , index_col=False)
+		dfMF = pd.read_csv('metered_flights_{}.csv'.format(stMF), sep=',', index_col=False)
+		#dfMF = pd.read_csv('~/Documents/MeteringAnalysis/Delay/data/bank2/bank2_MATM_data_2018-02-26.csv'  , sep=',' , index_col=False)
+	except:
+		print('metered flights output not found')
+		metered = False
+
+	#####################
 	
 	idx = -1
 	dfPlot = pd.DataFrame(np.empty((1, len(cols)), dtype=object), columns=cols)
@@ -67,13 +82,31 @@ def plot_queue(targetdate, banknum):
 				dfPlot.loc[idx,'actualOff'] = dfSummary.loc[flight, 'departure_runway_actual_time']
 				dfPlot.loc[idx,'actualOut'] = dfSummary.loc[flight, 'departure_stand_actual_time']
 								
+				
+				dfPlot.loc[idx, 'apreq'] = False
+				dfPlot.loc[idx, 'edct'] = False
+				
 				if str(dfSummary.loc[flight, 'apreq_final']) != 'nan':
-					dfPlot.loc[idx, 'controlled'] = True
-				else:
-					dfPlot.loc[idx, 'controlled'] = False
+					dfPlot.loc[idx, 'apreq'] = True
+				
+
+				if str(dfSummary.loc[flight, 'edct_final']) != 'nan':
+					dfPlot.loc[idx, 'edct'] = True
+				
 
 				if dfSummary.loc[flight, 'hold_indicator'] == True:
 					dfPlot.loc[idx, 'Gate Hold'] = dfSummary.loc[flight, 'actual_gate_hold']
+
+
+				dfCompliance = dfMF[ dfMF['gufi'] == dfSummary.loc[dfSummary.index[flight],'gufi']]
+				if len(dfCompliance['gufi']) > 0:
+					
+					compliance = pd.Timedelta(pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_actual_time']) 
+					- pd.Timestamp(dfCompliance.loc[dfCompliance.index[0],'departure_stand_surface_metered_time_value_ready'])
+					).total_seconds() / float(60)
+				
+					if str(compliance) != 'nan':
+						dfPlot.loc[idx,'Compliance'] = compliance
 
 	dfPlot = dfPlot.sort_values(by=['actualOff'])
 	dfPlot = dfPlot.reset_index(drop=True)
@@ -121,15 +154,39 @@ def plot_queue(targetdate, banknum):
 			#dfSorted.plot.bar(x='actualOff', y=['Total Excess Taxi', 'AMA Excess Taxi','Ramp Excess Taxi'], color = ['cyan' , 'magenta' , 'grey'],alpha=0.6,ax=ax)
 			dfSorted.plot.bar(x='actualOff', y=['AMA Excess Taxi','Ramp Excess Taxi'],width=0.3, position = -0.25, color = [ 'magenta' , 'grey'],alpha=0.6,ax=ax)
 			dfSorted.plot.bar(x='actualOff', y=['Total Excess Taxi','Gate Hold'], width = 0.15, position = 0.5, stacked=True, color = [ 'cyan' , 'red'],alpha=0.6,ax=ax)
+			dfSorted.plot.bar(x='actualOff', y=['Compliance'], width = 0.15, position = 1.5, color = [ 'blue'],alpha=0.6,ax=ax)
 			plt.title('Runway ' + runwayVec[rwy] + ' ' + targetdate.strftime('%Y-%m-%d'))
 			plt.ylabel('Excess Taxi Time [Minutes]')
 			plt.xlabel('Actuall Off Time [UTC]')
-			plt.ylim([0,35])
+			# minVal = 0
+			# if dfSorted['Compliance'].min() < 0:
+			# 	minVal = dfSorted['Compliance'].min()
+			# if minVal < -20:
+			# 	minVal = -20
+			plt.ylim([-10,35])
+			
+			apreq_x = []
+			apreq_y = []
+			edct_x = []
+			edct_y = []
+			for i in range(len(dfSorted)):
+				if dfSorted.loc[dfSorted.index[i],'apreq'] == True:
+					apreq_x.append(i)
+					apreq_y.append(dfSorted.loc[dfSorted.index[i],'target'])
+				if dfSorted.loc[dfSorted.index[i],'edct'] == True:
+					edct_x.append(i)
+					edct_y.append(dfSorted.loc[dfSorted.index[i],'target'])
+			
+			plt.plot(apreq_x,apreq_y,'o',markersize = 10,color='orange',label='Apreq Flight')
+			plt.plot(edct_x,edct_y,'o',markersize = 10,color='green',label='EDCT Flight')
+			plt.legend(loc='upper left')
+
 			plt.tight_layout()
 			#plt.savefig('figs/flightSpecificDelay/' + runwayVec[rwy]+dateVecIADS[date] + '.png')
 			plt.savefig(os.path.join(targetout, 'realized_queue_fig_{}_bank{}_{}.png'.format(dateVar, banknum, runwayVec[rwy])))
 			plt.close('all')
 			dfSorted.to_csv(os.path.join(targetout, 'realized_queue_{}_bank{}_{}.csv'.format(dateVar, banknum, runwayVec[rwy]))) # why is this repeated?
+
 
 
 def run(start_date, number_of_days, bank):
