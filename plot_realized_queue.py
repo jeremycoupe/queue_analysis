@@ -10,8 +10,7 @@ import fnmatch
 import re
 
 
-#reportsdir = '/home/atd2data/reports/summary'
-reportsdir = '/Users/wcoupe/Documents/summary'
+reportsdir = '/home/atd2data/reports/summary'
 minversion = 0.6
 
 cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', \
@@ -21,6 +20,7 @@ runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
 def plot_queue(targetdate, banknum):
 	print(targetdate)
 	dateVar = targetdate.strftime('%Y-%m-%d')
+	print(dateVar)
 	targetdir = os.path.join(reportsdir, '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day))
 	targetout = os.path.join('data', '{:d}'.format(targetdate.year), '{:02d}'.format(targetdate.month), '{:02d}'.format(targetdate.day), 'bank{}'.format(banknum))
 
@@ -29,8 +29,8 @@ def plot_queue(targetdate, banknum):
 	ffs_AAL = fnmatch.filter(os.listdir(targetdir), '*fullFlightSummary_AAL*')
 	ffs = set(ffs_all) - set(ffs_AAL)
 	if not ffs:
-		print('No fullFlightSummary files found. Exiting')
-		sys.exit()
+		print('No fullFlightSummary files found. Skipping day...')
+		return
 	versions = []
 	for f in ffs:
 		ver = re.compile('v\d+.\d+').findall(f)
@@ -38,13 +38,13 @@ def plot_queue(targetdate, banknum):
 			vernum = float(ver[0].strip('v'))
 			versions.append(vernum)
 	if not versions:
-		print('Version number for fullFlightSummary files not found; file to load is ambiguous. Exiting')
-		sys.exit()
+		print('Version number for fullFlightSummary files not found; file to load is ambiguous. Skipping day...')
+		return
 	latestver = max(versions)
 	# check version >= 0.6
 	if latestver < minversion:
-		print('fullFlightSummary version {} is less than {}. Exiting'.format(latestver, minversion))
-		sys.exit()
+		print('fullFlightSummary version {} is less than {}. Skipping day...'.format(latestver, minversion))
+		return
 	for f in ffs:
 		if fnmatch.fnmatch(f, '*fullFlightSummary.v{}*'.format(latestver)): 
 			targetfile = f

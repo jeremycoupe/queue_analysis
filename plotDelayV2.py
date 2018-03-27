@@ -54,7 +54,7 @@ def analyze_queue(targetdate, banknum):
 
 
 #totalNumberFlutter = 0
-	debug_except_notRwySw = pd.DataFrame()
+	#debug_except_notRwySw = pd.DataFrame()
 #for date in range(len(dateVec)):
 #	print(dateVec[date])
 #	if bank2:
@@ -130,6 +130,7 @@ def analyze_queue(targetdate, banknum):
 			numAMA = np.zeros(len(etaMsgVec))
 			numReady = np.zeros(len(etaMsgVec))
 			meterVec = np.zeros(len(etaMsgVec))
+			meterModeVec = np.zeros(len(etaMsgVec))
 			complianceVec = np.zeros(len(etaMsgVec))
 			exemptVec = np.zeros(len(etaMsgVec))
 			balloonMetricVec = np.zeros(len(etaMsgVec))
@@ -163,6 +164,7 @@ def analyze_queue(targetdate, banknum):
 				numReady[ts] = len(np.array(pd.to_timedelta(dfReady['ttot_minus_utot'])))
 				dfMeter = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] )]
 				stRunway = str(dfMeter.loc[dfMeter.index[0],'metering_display']).split(',')
+				meter_mode = dfMeter.loc[dfMeter.index[0],'metering_mode']
 				
 				target_df = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts] ) ]
 				targetVec[ts] = target_df.loc[target_df.index[0],'target_queue_buffer'] / float(60000)
@@ -173,16 +175,21 @@ def analyze_queue(targetdate, banknum):
 				if runwayVec[rwy] in stRunway:
 					meterVec[ts] = 1
 
-				
+				if meterModeVec[ts] == 1:
+					if runwayVec[rwy] in stRunway:
+						meterVec[ts] = 1				
+
 				for flight in range(len(dfActiveALL['flight_key'])):
 					if dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] not in activeVec:
 						activeVec.append(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
 						if metered:
 							if meterVec[ts] == 1:
 								idx+=1
-								
-								dfLastSchedule = dfCurrentRunway[ (dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts-1] ) \
-								& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] )]
+								if ts > 0:
+									dfLastSchedule = dfCurrentRunway[(dfCurrentRunway['eta_msg_time'] == etaMsgVec[ts-1]) 
+													& (dfCurrentRunway['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])]
+								else:
+									dfLastSchedule = []								
 
 								if len(dfLastSchedule) > 0:
 									lastState = dfLastSchedule.loc[dfLastSchedule.index[0],'model_schedule_state']
@@ -266,10 +273,10 @@ def analyze_queue(targetdate, banknum):
 								
 								else:
 									if ts > 0:
-										print('LOOK INTO THIS POSSIBLE RUNWAY SWITCH')
-										print(etaMsgVec[ts])
-										print(runwayVec[rwy])
-										print(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
+										#print('LOOK INTO THIS POSSIBLE RUNWAY SWITCH')
+										#print(etaMsgVec[ts])
+										#print(runwayVec[rwy])
+										#print(dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'])
 
 										df_compliance.loc[idx,'runway'] = runwayVec[rwy]
 										df_compliance.loc[idx,'gufi'] = dfActiveALL.loc[dfActiveALL.index[flight],'flight_key']
@@ -281,17 +288,17 @@ def analyze_queue(targetdate, banknum):
 										&(df['flight_key'] == dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'] ) ]
 										previousRunway = tempDF.loc[tempDF.index[0],'runway']
 
-										print('previousRunway is {}, runwayVec[rwy] is {}'.format(previousRunway, runwayVec[rwy]))
-										if previousRunway != runwayVec[rwy]:
-											print('CONFIRMED RUNWAY SWITCH')
-										else: 
-											print('Not a runway switch! Adding to file:') #TODO: write out to file
-											debug_except_notRwySw = debug_except_notRwySw.append(pd.DataFrame(
-												{'gufi':dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'], 
-												'rwy':runwayVec[rwy], 
-												'etaMsgTime':etaMsgVec[ts]}, index=[0]))
-											print(debug_except_notRwySw)
-										print('\n')
+										#print('previousRunway is {}, runwayVec[rwy] is {}'.format(previousRunway, runwayVec[rwy]))
+										#if previousRunway != runwayVec[rwy]:
+										#	print('CONFIRMED RUNWAY SWITCH')
+										#else: 
+										#	print('Not a runway switch! Adding to file:') #TODO: write out to file
+										#	debug_except_notRwySw = debug_except_notRwySw.append(pd.DataFrame(
+										#		{'gufi':dfActiveALL.loc[dfActiveALL.index[flight],'flight_key'], 
+										#		'rwy':runwayVec[rwy], 
+										#		'etaMsgTime':etaMsgVec[ts]}, index=[0]))
+										#	print(debug_except_notRwySw)
+										#print('\n')
 				
 	
 
@@ -319,6 +326,7 @@ def analyze_queue(targetdate, banknum):
 			plt.plot(np.arange(len(maxActive)) , maxActive / float(60) , color = 'blue', linewidth = 5, label = 'Max Active Delay Runway ' + runwayVec[rwy])
 			plt.plot(np.arange(len(maxActive)) , maxPlanned / float(60), color = 'orange', linewidth = 2, alpha = alphaVal, label = 'Max Planning Delay Runway ' + runwayVec[rwy])
 			plt.plot(np.arange(len(maxActive)) , maxReady / float(60), color = 'green', linewidth = 2, alpha = alphaVal, label = 'Max Ready Delay Runway ' + runwayVec[rwy])
+			plt.plot(np.arange(len(maxActive)), meterModeVec, color='black', linestyle='--', linewidth=2, alpha=alphaVal, label='Time Based Metering ' + runwayVec[rwy])
 			plt.plot(np.arange(len(maxActive)) , meterVec , color = 'black', linewidth = 2, alpha = alphaVal, label = 'Metering ON ' + runwayVec[rwy])
 			#plt.plot(np.arange(len(maxActive)) , np.cumsum(balloonMetricVec) / float(35) , color = 'red', linewidth = 2, alpha = alphaVal, label = 'Balloon Metric ' + runwayVec[rwy])
 			#plt.plot(np.arange(len(maxActive)) , maxUncertain / float(60) , label = 'Max Uncertain Delay Runway ' + runwayVec[rwy])
@@ -365,6 +373,17 @@ def analyze_queue(targetdate, banknum):
 			df_summary.loc[idS,'count_ga_uncertain'] = len(df_compliance[df_compliance['previous_state'] == 'GA PUSHBACK_UNCERTAIN'])
 			df_summary.loc[idS,'count_ga_apreq'] = len(df_compliance[df_compliance['previous_state'] == 'GA APREQ_DEPARTURE'])
 			df_summary.loc[idS,'count_ga_edct'] = len(df_compliance[df_compliance['previous_state'] == 'GA EDCT_DEPARTURE'])
+
+			targetSt = str(targetVec[0])
+			targetTimeSt = str(etaMsgVec[0]).split('+')[0]
+
+			for v in range(1,len(targetVec)):
+				if targetVec[v] != targetVec[v-1]:
+					targetSt = targetSt + '--' + str(targetVec[v])
+					targetTimeSt = targetTimeSt + '--' + str(etaMsgVec[v]).split('+')[0]
+
+			df_summary.loc[idS,'target'] = targetSt
+			df_summary.loc[idS,'target_timestamp'] = targetTimeSt
 
 			uniqueState = ['APREQ_DEPARTURE','EDCT_DEPARTURE','EXEMPT_DEPARTURE','RUNWAY_SWITCH',\
 			'PUSHBACK_PLANNED','PUSHBACK_READY','PUSHBACK_UNCERTAIN','GA PUSHBACK_UNCERTAIN','GA PUSHBACK_PLANNED',\

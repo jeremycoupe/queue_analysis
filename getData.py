@@ -54,7 +54,7 @@ def fGetData(targetdate, banknum, conn):
 	q = '''SELECT
 	tf.flight_key, tf.general_stream, tfs.schedule_priority, tfs.model_schedule_state, 
 	trun.runway, tg.gate, smd.eta_msg_time, rt.scheduled_time, rt.estimated_time, (rt.scheduled_time - rt.estimated_time) as ttot_minus_utot,
-	tfix.fix,smd.metering_display,smd.metering_mode, rt.schedule_sequence, smd.target_queue_buffer, smd.metering_display_entry_offset,
+	tfix.fix, smd.metering_display, smd.metering_mode, rt.schedule_sequence, smd.target_queue_buffer, smd.metering_display_entry_offset,
 	smd.metering_display_exit_offset, tad.ac_type, tad.weight_class
 	FROM
 	tactical_route_times rt
