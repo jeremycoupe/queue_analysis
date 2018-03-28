@@ -1,11 +1,14 @@
-import numpy as np
-import pandas as pd
-import psycopg2
-import pandas.io.sql as psql
-import matplotlib.pyplot as plt
 import argparse
 import datetime as dt
 import os
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pandas.io.sql as psql
+import psycopg2
 
 randomColors = np.load('randomColors.npy')
 alphaVal = 0.6

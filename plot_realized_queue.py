@@ -1,21 +1,25 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
-from scipy import stats
 import argparse
 import datetime as dt
-import sys
 import fnmatch
+import os
 import re
+import sys
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy import stats
 
 reportsdir = '/home/atd2data/reports/summary'
-minversion = 0.6
+minversion = 0.6 # minumum version of flightSummary that can support this analysis
 
-cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', \
-'Ramp Excess Taxi', 'AMA Excess Taxi', 'AMA model', 'predictedDelay', 'apreq','edct', 'Gate Hold', 'Compliance']
+cols = ['gufi', 'runway', 'target', 'actualOff', 'actualOut', 'Total Excess Taxi', 
+	'Ramp Excess Taxi', 'AMA Excess Taxi', 'AMA model', 'predictedDelay', 
+	'apreq', 'edct', 'Gate Hold', 'Compliance']
 runwayVec = ['18L', '18C', '36R', '36C'] # hardcoded to CLT
+
 
 def plot_queue(targetdate, banknum):
 	print(targetdate)
@@ -40,7 +44,6 @@ def plot_queue(targetdate, banknum):
 		print('Version number for fullFlightSummary files not found; file to load is ambiguous. Skipping day...')
 		return
 	latestver = max(versions)
-	# check version >= 0.6
 	if latestver < minversion:
 		print('fullFlightSummary version {} is less than {}. Skipping day...'.format(latestver, minversion))
 		return
@@ -52,7 +55,6 @@ def plot_queue(targetdate, banknum):
 	df_queue = pd.read_csv(os.path.join(targetout, 'summary_{}_bank{}.csv'.format(dateVar, banknum)), sep=',',index_col=False)
 
 	#####################
-
 	stMF = targetdate.strftime('%Y%m%d')
 	metered = True
 	try:
@@ -63,9 +65,8 @@ def plot_queue(targetdate, banknum):
 		print('Metered flights output not found')
 		dfMF = pd.DataFrame({'gufi':''},index=[0])
 		metered = False
-
 	#####################
-	
+
 	idx = -1
 	dfPlot = pd.DataFrame(np.empty((1, len(cols)), dtype=object), columns=cols)
 	for flight in range(len(dfSummary['gufi'])):
@@ -82,18 +83,15 @@ def plot_queue(targetdate, banknum):
 				dfPlot.loc[idx,'actualOff'] = dfSummary.loc[flight, 'departure_runway_actual_time']
 				dfPlot.loc[idx,'actualOut'] = dfSummary.loc[flight, 'departure_stand_actual_time']
 								
-				
 				dfPlot.loc[idx, 'apreq'] = False
 				dfPlot.loc[idx, 'edct'] = False
 				
 				if str(dfSummary.loc[flight, 'apreq_final']) != 'nan':
 					dfPlot.loc[idx, 'apreq'] = True
 				
-
 				if str(dfSummary.loc[flight, 'edct_final']) != 'nan':
 					dfPlot.loc[idx, 'edct'] = True
 				
-
 				if dfSummary.loc[flight, 'hold_indicator'] == True:
 					dfPlot.loc[idx, 'Gate Hold'] = dfSummary.loc[flight, 'actual_gate_hold']
 
@@ -147,7 +145,6 @@ def plot_queue(targetdate, banknum):
 		dfSorted = dfSorted.reset_index(drop=True)
 		
 		if len(dfSorted) > 0:
-
 			dfSorted.to_csv(os.path.join(targetout, 'realized_queue_{}_bank{}_{}.csv'.format(dateVar, banknum, runwayVec[rwy]))) # why is this repeated?
 			
 			ax = dfSorted.plot(x='actualOff', y='target',figsize=(14,10))
@@ -186,7 +183,6 @@ def plot_queue(targetdate, banknum):
 			plt.savefig(os.path.join(targetout, 'realized_queue_fig_{}_bank{}_{}.png'.format(dateVar, banknum, runwayVec[rwy])))
 			plt.close('all')
 			dfSorted.to_csv(os.path.join(targetout, 'realized_queue_{}_bank{}_{}.csv'.format(dateVar, banknum, runwayVec[rwy]))) # why is this repeated?
-
 
 
 def run(start_date, number_of_days, bank):

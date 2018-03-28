@@ -1,10 +1,11 @@
-import psycopg2
-import pandas.io.sql as psql
-import numpy as np
-import pandas as pd
-import os
 import argparse
 import datetime as dt
+import os
+
+import numpy as np
+import pandas as pd
+import pandas.io.sql as psql
+import psycopg2
 
 DBHOST = 'localhost'
 DBPORT = '5909'
