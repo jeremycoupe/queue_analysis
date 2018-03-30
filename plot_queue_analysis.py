@@ -10,7 +10,7 @@ import pandas as pd
 import pandas.io.sql as psql
 import psycopg2
 
-randomColors = np.load('randomColors.npy')
+plotColors = np.load('plotColors.npy')
 alphaVal = 0.6
 
 
@@ -367,7 +367,7 @@ def analyze_queue(targetdate, banknum):
 				labelSt = uniqueState[state]
 				for row in range(len(df_compliance['gufi'])):
 					if df_compliance.loc[df_compliance.index[row],'previous_state'] == labelSt:
-						colStr = randomColors[state]
+						colStr = plotColors[state]
 						if str(df_compliance.loc[df_compliance.index[row],'compliance']) != 'nan':
 							if df_compliance.loc[df_compliance.index[row],'compliance'] != None:
 								xPlot.append(df_compliance.loc[df_compliance.index[row],'ts'])
